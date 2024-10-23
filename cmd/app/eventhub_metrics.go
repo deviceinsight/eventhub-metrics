@@ -55,10 +55,11 @@ func main() {
 		collectMetrics(credential, cfg, collectorService)
 		elapsed := time.Since(start)
 
-		slog.Info("metrics collector finished", "elapsed", elapsed)
+		slog.Info("metrics collector finished", "elapsed", elapsed.String())
 		if cfg.Collector.Interval == nil {
 			break
 		}
+		slog.Debug("waiting for next iteration", "interval", (*cfg.Collector.Interval).String())
 		time.Sleep(*cfg.Collector.Interval)
 	}
 }
@@ -66,7 +67,7 @@ func main() {
 func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.Config,
 	collectorService collector.Service) {
 
-	for _, namespaceCfg := range cfg.EventhubNamespaces {
+	for _, namespaceCfg := range cfg.Namespaces {
 
 		ctx := context.Background()
 		namespace, eventHubs, err := collectorService.ProcessNamespace(ctx, credential, namespaceCfg.Endpoint)

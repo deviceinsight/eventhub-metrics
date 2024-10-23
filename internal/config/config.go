@@ -12,7 +12,7 @@ import (
 	"github.com/knadh/koanf/providers/file"
 )
 
-type EventhubNamespaceConfig struct {
+type NamespaceConfig struct {
 	Endpoint               string
 	StorageAccountEndpoint string
 	CheckpointContainer    string
@@ -50,10 +50,10 @@ type LogConfig struct {
 }
 
 type Config struct {
-	EventhubNamespaces []EventhubNamespaceConfig
-	Exporter           ExporterConfig
-	Collector          CollectorConfig
-	Log                LogConfig
+	Namespaces []NamespaceConfig
+	Exporter   ExporterConfig
+	Collector  CollectorConfig
+	Log        LogConfig
 }
 
 const EnvPrefix string = "EH_METRICS_"
@@ -69,6 +69,7 @@ func Load(path string) (*Config, error) {
 		"collector.ownershipExpirationDuration": time.Minute,
 		"collector.concurrency":                 8, //nolint:mnd // just a default
 		"exporter.prometheus.address":           ":8080",
+		"exporter.prometheus.readTimeout":       "1s",
 	}, "."), nil); err != nil {
 		return nil, fmt.Errorf("failed to load config defaults: %w", err)
 	}
