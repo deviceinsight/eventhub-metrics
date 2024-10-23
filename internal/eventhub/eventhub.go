@@ -14,13 +14,20 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 )
 
+type Details struct {
+	Name                   string
+	PartitionCount         int
+	PartitionIDs           []string
+	MessageRetentionInDays int
+}
+
 type SequenceNumbers struct {
 	Min int64
 	Max int64
 }
 
 func GetEventHubs(ctx context.Context, credential *azidentity.DefaultAzureCredential,
-	endpoint string) ([]string, error) {
+	endpoint string) ([]Details, error) {
 
 	token, err := getToken(ctx, credential, endpoint)
 	if err != nil {
@@ -42,9 +49,14 @@ func GetEventHubs(ctx context.Context, credential *azidentity.DefaultAzureCreden
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse xml response: %w", err)
 	}
-	eventHubs := make([]string, len(feed.Entry))
+	eventHubs := make([]Details, len(feed.Entry))
 	for i, entry := range feed.Entry {
-		eventHubs[i] = entry.Title
+		eventHubs[i] = Details{
+			Name:                   entry.Title,
+			PartitionCount:         entry.Content.EventHubDescription.PartitionCount,
+			PartitionIDs:           entry.Content.EventHubDescription.PartitionIDs,
+			MessageRetentionInDays: entry.Content.EventHubDescription.MessageRetentionInDays,
+		}
 	}
 
 	return eventHubs, nil
@@ -124,27 +136,22 @@ func closeBody(response *http.Response) {
 }
 
 func GetSequenceNumbers(ctx context.Context, credential *azidentity.DefaultAzureCredential,
-	endpoint, eventHub string) (map[string]SequenceNumbers, error) {
+	endpoint string, eventhubDetails *Details) (map[string]SequenceNumbers, error) {
 
 	eventhubURL, err := GetNamespaceURL(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse eventhub url: %w", err)
 	}
 
-	consumerClient, err := azeventhubs.NewConsumerClient(eventhubURL.Hostname(), eventHub,
+	consumerClient, err := azeventhubs.NewConsumerClient(eventhubURL.Hostname(), eventhubDetails.Name,
 		azeventhubs.DefaultConsumerGroup, credential, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer client: %w", err)
 	}
 
-	properties, err := consumerClient.GetEventHubProperties(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get eventhub properties: %w", err)
-	}
-
 	lastEnqueuedSequenceNumbers := make(map[string]SequenceNumbers)
 
-	for _, partitionID := range properties.PartitionIDs {
+	for _, partitionID := range eventhubDetails.PartitionIDs {
 		partitionProps, err := consumerClient.GetPartitionProperties(ctx, partitionID, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get partition properties: %w", err)

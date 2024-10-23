@@ -20,7 +20,7 @@ var GitCommit string
 
 func main() {
 
-	cfg, err := config.Load("config.yaml")
+	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load cfg", "error", err)
 		os.Exit(1)
@@ -59,7 +59,7 @@ func main() {
 		if cfg.Collector.Interval == nil {
 			break
 		}
-		slog.Debug("waiting for next iteration", "interval", (*cfg.Collector.Interval).String())
+		slog.Debug("waiting for next iteration", "interval", cfg.Collector.Interval.String)
 		time.Sleep(*cfg.Collector.Interval)
 	}
 }
@@ -89,7 +89,7 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 		for _, eventHub := range eventHubs {
 			started := limiter.Go(ctx, func() {
 				err := collectorService.ProcessEventHub(ctx, credential, blobStore, namespace, namespaceCfg.Endpoint,
-					eventHub)
+					&eventHub)
 				if err != nil {
 					slog.Error("failed to process eventhub", "namespace", namespace, "eventHub",
 						eventHub, "error", err)

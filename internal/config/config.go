@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"time"
 
@@ -58,7 +59,13 @@ type Config struct {
 
 const EnvPrefix string = "EH_METRICS_"
 
-func Load(path string) (*Config, error) {
+func Load() (*Config, error) {
+
+	envKey := "CONFIG_FILEPATH"
+	configFilePath := os.Getenv(envKey)
+	if configFilePath == "" {
+		configFilePath = "config.yaml"
+	}
 
 	var k = koanf.New(".")
 
@@ -75,7 +82,7 @@ func Load(path string) (*Config, error) {
 	}
 
 	// load config file
-	if err := k.Load(file.Provider(path), yaml.Parser()); err != nil {
+	if err := k.Load(file.Provider(configFilePath), yaml.Parser()); err != nil {
 		return nil, fmt.Errorf("failed to load config: %w", err)
 	}
 

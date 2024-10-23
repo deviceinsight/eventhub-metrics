@@ -1,5 +1,6 @@
 .idea
 *.iml
 *.log
+*.tgz
 config.yaml
 /eventhub_metrics
