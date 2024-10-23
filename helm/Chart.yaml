@@ -1,0 +1,8 @@
+apiVersion: v2
+name: eventhub-metrics
+description: A Helm chart installing eventhub-metrics
+version: 1.0.0
+home: https://gitlab.device-insight.com/dwi/eventhub-metrics
+maintainers:
+  - name: Device Insight
+    url: https://www.device-insight.com

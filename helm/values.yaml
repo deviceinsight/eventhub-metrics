@@ -1,0 +1,72 @@
+####################################
+# Kubernetes deployment properties #
+####################################
+
+image:
+  repository: tbd
+  group: tbd
+  pullPolicy: IfNotPresent
+
+resources: {}
+# We usually recommend not to specify default resources and to leave this as a conscious
+# choice for the user. This also increases chances charts run on environments with little
+# resources, such as Minikube. If you do want to specify resources, uncomment the following
+# lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+# limits:
+#   cpu: 100m
+#   memory: 128Mi
+# requests:
+#   cpu: 100m
+#   memory: 128Mi
+
+# define env variables for the deployment
+env: []
+
+replicaCount: 1
+
+## Minimum number of pods to keep available
+podsMinAvailable: 0
+
+probes:
+  startupProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    periodSeconds: 10
+    initialDelaySeconds: 5
+    failureThreshold: 3
+  livenessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    periodSeconds: 30
+    failureThreshold: 3
+  readinessProbe:
+    httpGet:
+      path: /health
+      port: 8080
+    periodSeconds: 30
+    failureThreshold: 3
+
+deploymentLabels: {}
+serviceLabels: {}
+
+scheduling:
+  ## Controls if (true) an anti affinity should be created, preventing multiple pods on the same node.
+  singletonPerNode: true
+
+## Selects nodes to run on based on certain labels on the nodes.
+## Directly expanded into the deployment chart.
+nodeSelector: {}
+
+managedIdentity: {}
+
+## Enables scheduling on tainted nodes.
+## Directly expanded into the deployment chart.
+tolerations: []
+
+#######################################
+# service settings for Helm templates #
+#######################################
+
+config: {}

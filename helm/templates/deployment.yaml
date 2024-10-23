@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ template "eventhub-metrics.fullname" . }}
+  labels:
+    app: {{ template "eventhub-metrics.name" . }}
+    chart: {{ template "eventhub-metrics.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.deploymentLabels}}
+    {{- toYaml . | nindent 4}}
+    {{- end}}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+  selector:
+    matchLabels:
+      app: {{ template "eventhub-metrics.name" . }}
+      release: {{ .Release.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ template "eventhub-metrics.name" . }}
+        release: {{ .Release.Name }}
+        azure.workload.identity/use: "true"
+        monitoring: go-loki
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+{{- if eq .Values.image.version "latest" }}
+        checksum/random: {{ randAlphaNum 10 | quote }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ template "eventhub-metrics.fullname" . }}
+{{- if .Values.scheduling.singletonPerNode }}
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: app
+                    operator: In
+                    values:
+                      - {{ template "eventhub-metrics.name" . }}
+                  - key: release
+                    operator: In
+                    values:
+                      - {{ .Release.Name }}
+              topologyKey: "kubernetes.io/hostname"
+{{- end }}
+      containers:
+        - name: {{ .Chart.Name }}
+          image: "{{ .Values.image.repository }}/{{ .Values.image.group }}/eventhub-metrics:{{ required "image.version is required" .Values.image.version }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: tcp
+          startupProbe: {{ toYaml .Values.probes.startupProbe | nindent 12 }}
+          readinessProbe: {{ toYaml .Values.probes.readinessProbe | nindent 12 }}
+          livenessProbe: {{ toYaml .Values.probes.livenessProbe | nindent 12 }}
+          resources:
+{{ toYaml .Values.resources | indent 12 }}
+          env:
+            - name: CONFIG_FILEPATH
+              value: /etc/eventhub-metrics/config.yaml
+            {{- range .Values.env}}
+            - name: {{.name}}
+              value: {{.value | quote}}
+            {{- end}}
+          volumeMounts:
+            - name: application-config
+              mountPath: /etc/eventhub-metrics
+              readOnly: true
+      volumes:
+        - name: application-config
+          configMap:
+            name: {{ template "eventhub-metrics.fullname" . }}
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{ toYaml . | indent 8 }}
+{{- end }}
+{{- if .Values.tolerations }}
+      tolerations:
+{{ toYaml .Values.tolerations | indent 8 }}
+{{- end }}
+

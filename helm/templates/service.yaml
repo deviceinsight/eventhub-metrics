@@ -1,0 +1,20 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ template "eventhub-metrics.fullname" . }}
+  labels:
+    app: {{ template "eventhub-metrics.name" . }}
+    chart: {{ template "eventhub-metrics.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+    {{- with .Values.serviceLabels}}
+    {{- toYaml . | nindent 4}}
+    {{- end}}
+spec:
+  ports:
+    - port: 80
+      name: http
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: {{ template "eventhub-metrics.name" . }}

@@ -1,0 +1,20 @@
+{{- if lt 0 (int .Values.podsMinAvailable) }}
+  {{- if ge (int .Values.podsMinAvailable) (int .Values.replicaCount) }}
+    {{- fail "'podsMinAvailable' should be smaller than minimum repliaces. Please increase 'replicaCount' or reduce 'podsMinAvailable'" }}
+  {{- end }}
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "eventhub-metrics.fullname" . }}
+  labels:
+    app: {{ template "eventhub-metrics.name" . }}
+    chart: {{ template "eventhub-metrics.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+spec:
+  minAvailable: {{ .Values.podsMinAvailable }}
+  selector:
+    matchLabels:
+      app: {{ template "eventhub-metrics.name" . }}
+      release: {{ .Release.Name }}
+{{- end }}
