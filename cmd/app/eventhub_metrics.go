@@ -2,16 +2,21 @@ package main
 
 import (
 	"context"
+	"log/slog"
+	"os"
+	"time"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/deviceinsight/eventhub-metrics/internal/blobstorage"
 	"github.com/deviceinsight/eventhub-metrics/internal/collector"
 	"github.com/deviceinsight/eventhub-metrics/internal/concurrency"
 	"github.com/deviceinsight/eventhub-metrics/internal/config"
 	"github.com/deviceinsight/eventhub-metrics/internal/metrics"
-	"log/slog"
-	"os"
-	"time"
 )
+
+var Version string
+var BuildTime string
+var GitCommit string
 
 func main() {
 
@@ -22,6 +27,8 @@ func main() {
 	}
 
 	config.InitLogger(cfg.Log)
+
+	slog.Info("service starting", "version", Version, "buildTime", BuildTime, "gitCommit", GitCommit)
 
 	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
@@ -34,7 +41,7 @@ func main() {
 	if cfg.Exporter.Prometheus.Enabled {
 		exporter := metrics.NewPrometheusService()
 
-		go exporter.RunHttpServer(cfg.Exporter.Prometheus.Address, cfg.Exporter.Prometheus.ReadTimeout)
+		go exporter.RunHTTPServer(cfg.Exporter.Prometheus.Address, cfg.Exporter.Prometheus.ReadTimeout)
 
 		metricExporters = append(metricExporters, exporter)
 	}
@@ -56,7 +63,8 @@ func main() {
 	}
 }
 
-func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.Config, collectorService collector.Service) {
+func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.Config,
+	collectorService collector.Service) {
 
 	for _, namespaceCfg := range cfg.EventhubNamespaces {
 
@@ -79,14 +87,17 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 
 		for _, eventHub := range eventHubs {
 			started := limiter.Go(ctx, func() {
-				err := collectorService.ProcessEventHub(ctx, credential, blobStore, namespace, namespaceCfg.Endpoint, eventHub)
+				err := collectorService.ProcessEventHub(ctx, credential, blobStore, namespace, namespaceCfg.Endpoint,
+					eventHub)
 				if err != nil {
-					slog.Error("failed to process eventhub", "namespace", namespace, "eventHub", eventHub, "error", err)
+					slog.Error("failed to process eventhub", "namespace", namespace, "eventHub",
+						eventHub, "error", err)
 					os.Exit(1)
 				}
 			})
 			if !started && ctx.Err() != nil {
-				slog.Error("failed to start process", "namespace", namespace, "eventHub", eventHub, "error", err)
+				slog.Error("failed to start process", "namespace", namespace, "eventHub", eventHub,
+					"error", err)
 				os.Exit(1)
 			}
 		}

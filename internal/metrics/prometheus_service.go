@@ -2,17 +2,18 @@ package metrics
 
 import (
 	"fmt"
-	"github.com/prometheus/client_golang/prometheus"
-	"github.com/prometheus/client_golang/prometheus/collectors"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"log/slog"
 	"net/http"
 	"os"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-type RecordServiceWithHttpServer interface {
-	RunHttpServer(address string, readTimeout time.Duration)
+type RecordServiceWithHTTPServer interface {
+	RunHTTPServer(address string, readTimeout time.Duration)
 	RecordService
 }
 
@@ -21,7 +22,7 @@ type prometheusService struct {
 	gauges   map[*Metric]*prometheus.GaugeVec
 }
 
-func NewPrometheusService() RecordServiceWithHttpServer {
+func NewPrometheusService() RecordServiceWithHTTPServer {
 
 	registry := prometheus.NewRegistry()
 
@@ -42,7 +43,7 @@ func NewPrometheusService() RecordServiceWithHttpServer {
 	return &prometheusService{registry: registry, gauges: gauges}
 }
 
-func (s *prometheusService) RunHttpServer(address string, readTimeout time.Duration) {
+func (s *prometheusService) RunHTTPServer(address string, readTimeout time.Duration) {
 
 	pMux := http.NewServeMux()
 	promHandler := promhttp.HandlerFor(s.registry, promhttp.HandlerOpts{})

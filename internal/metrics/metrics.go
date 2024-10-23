@@ -61,8 +61,9 @@ var ConsumerGroupEventsSum = &Metric{
 }
 
 var ConsumerGroupPartitionLag = &Metric{
-	Name:   "consumer_group_partition_lag",
-	Help:   "the number of messages a consumer group is lagging behind the last enqueued sequence number of a partition",
+	Name: "consumer_group_partition_lag",
+	Help: "the number of messages a consumer group is lagging behind the last enqueued sequence number" +
+		" of a partition",
 	Labels: []string{"namespace", "eventhub", "consumer_group", "partition_id"},
 }
 
@@ -72,6 +73,6 @@ var ConsumerGroupLag = &Metric{
 	Labels: []string{"namespace", "eventhub", "consumer_group"},
 }
 
-var allMetrics = []*Metric{NamespaceInfo, EventhubInfo, EventhubPartitionSequenceNumberMin, EventhubSequenceNumberMinSum,
-	EventhubPartitionSequenceNumberMax, EventhubSequenceNumberMaxSum, ConsumerGroupInfo, ConsumerGroupOwners,
-	ConsumerGroupEventsSum, ConsumerGroupPartitionLag, ConsumerGroupLag}
+var allMetrics = []*Metric{NamespaceInfo, EventhubInfo, EventhubPartitionSequenceNumberMin,
+	EventhubSequenceNumberMinSum, EventhubPartitionSequenceNumberMax, EventhubSequenceNumberMaxSum, ConsumerGroupInfo,
+	ConsumerGroupOwners, ConsumerGroupEventsSum, ConsumerGroupPartitionLag, ConsumerGroupLag}

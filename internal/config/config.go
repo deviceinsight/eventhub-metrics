@@ -2,13 +2,14 @@ package config
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
 	"github.com/knadh/koanf"
 	"github.com/knadh/koanf/parsers/yaml"
 	"github.com/knadh/koanf/providers/confmap"
 	"github.com/knadh/koanf/providers/env"
 	"github.com/knadh/koanf/providers/file"
-	"strings"
-	"time"
 )
 
 type EventhubNamespaceConfig struct {
@@ -66,7 +67,7 @@ func Load(path string) (*Config, error) {
 		"log.level":                             "INFO",
 		"log.format":                            "JSON",
 		"collector.ownershipExpirationDuration": time.Minute,
-		"collector.concurrency":                 8,
+		"collector.concurrency":                 8, //nolint:mnd // just a default
 		"exporter.prometheus.address":           ":8080",
 	}, "."), nil); err != nil {
 		return nil, fmt.Errorf("failed to load config defaults: %w", err)
@@ -79,7 +80,7 @@ func Load(path string) (*Config, error) {
 
 	// load env variables
 	if err := k.Load(env.Provider(EnvPrefix, ".", func(s string) string {
-		return strings.ToLower(strings.Replace(strings.TrimPrefix(s, EnvPrefix), "_", ".", -1))
+		return strings.ToLower(strings.ReplaceAll(strings.TrimPrefix(s, EnvPrefix), "_", "."))
 	}), nil); err != nil {
 		return nil, fmt.Errorf("failed read env variables: %w", err)
 	}

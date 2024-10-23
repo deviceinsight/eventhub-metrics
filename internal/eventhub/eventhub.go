@@ -3,14 +3,15 @@ package eventhub
 import (
 	"context"
 	"fmt"
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
-	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
 	"time"
+
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 )
 
 type SequenceNumbers struct {
@@ -18,7 +19,8 @@ type SequenceNumbers struct {
 	Max int64
 }
 
-func GetEventHubs(ctx context.Context, credential *azidentity.DefaultAzureCredential, endpoint string) ([]string, error) {
+func GetEventHubs(ctx context.Context, credential *azidentity.DefaultAzureCredential,
+	endpoint string) ([]string, error) {
 
 	token, err := getToken(ctx, credential, endpoint)
 	if err != nil {
@@ -34,6 +36,7 @@ func GetEventHubs(ctx context.Context, credential *azidentity.DefaultAzureCreden
 	if err != nil {
 		return nil, fmt.Errorf("failed to peform request: %w", err)
 	}
+	defer closeBody(response)
 
 	feed, err := parseXMLResponse(response)
 	if err != nil {
@@ -47,7 +50,8 @@ func GetEventHubs(ctx context.Context, credential *azidentity.DefaultAzureCreden
 	return eventHubs, nil
 }
 
-func GetConsumerGroups(ctx context.Context, credential *azidentity.DefaultAzureCredential, endpoint string, eventHub string) ([]string, error) {
+func GetConsumerGroups(ctx context.Context, credential *azidentity.DefaultAzureCredential, endpoint string,
+	eventHub string) ([]string, error) {
 
 	token, err := getToken(ctx, credential, endpoint)
 	if err != nil {
@@ -63,6 +67,7 @@ func GetConsumerGroups(ctx context.Context, credential *azidentity.DefaultAzureC
 	if err != nil {
 		return nil, fmt.Errorf("failed to peform request: %w", err)
 	}
+	defer closeBody(response)
 
 	feed, err := parseXMLResponse(response)
 	if err != nil {
@@ -105,20 +110,29 @@ func performRequest(ctx context.Context, token string, url *url.URL) (*http.Resp
 		return nil, fmt.Errorf("failed to make http request: %w", err)
 	}
 
-	if res.StatusCode != 200 {
+	if res.StatusCode < 200 || res.StatusCode >= 300 {
 		return nil, fmt.Errorf("request failed with status=%d", res.StatusCode)
 	}
 	return res, nil
 }
 
-func GetSequenceNumbers(ctx context.Context, credential *azidentity.DefaultAzureCredential, endpoint, eventHub string) (map[string]SequenceNumbers, error) {
+func closeBody(response *http.Response) {
+	if response == nil {
+		return
+	}
+	_ = response.Body.Close()
+}
+
+func GetSequenceNumbers(ctx context.Context, credential *azidentity.DefaultAzureCredential,
+	endpoint, eventHub string) (map[string]SequenceNumbers, error) {
 
 	eventhubURL, err := GetNamespaceURL(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse eventhub url: %w", err)
 	}
 
-	consumerClient, err := azeventhubs.NewConsumerClient(eventhubURL.Hostname(), eventHub, azeventhubs.DefaultConsumerGroup, credential, nil)
+	consumerClient, err := azeventhubs.NewConsumerClient(eventhubURL.Hostname(), eventHub,
+		azeventhubs.DefaultConsumerGroup, credential, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer client: %w", err)
 	}
@@ -171,5 +185,5 @@ func GetNamespaceName(endpoint string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to parse u: %w", err)
 	}
-	return strings.SplitN(u.Hostname(), ".", 2)[0], nil
+	return strings.SplitN(u.Hostname(), ".", 2)[0], nil //nolint:mnd // we just need to split the subdomain
 }

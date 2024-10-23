@@ -2,3 +2,4 @@
 *.iml
 *.log
 config.yaml
+/eventhub_metrics

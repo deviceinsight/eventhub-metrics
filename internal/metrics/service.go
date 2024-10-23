@@ -7,8 +7,8 @@ import (
 type Service interface {
 	RecordNamespaceInfo(namespace, endpoint string) error
 	RecordEventhubInfo(namespace, eventhub string, partitionCount int) error
-	RecordEventhubPartitionSequenceNumber(namespace, eventhub, partitionID string, min, max int64) error
-	RecordEventhubSequenceNumberSum(namespace, eventhub string, min, max int64) error
+	RecordEventhubPartitionSequenceNumber(namespace, eventhub, partitionID string, seqMin, seqMax int64) error
+	RecordEventhubSequenceNumberSum(namespace, eventhub string, seqMin, seqMax int64) error
 	RecordConsumerGroupInfo(namespace, eventhub, consumerGroup string, state string) error
 	RecordConsumerGroupOwners(namespace, eventhub, consumerGroup string, ownerCount int) error
 	RecordConsumerGroupEvents(namespace, eventhub, consumerGroup string, eventCount int64) error
@@ -39,12 +39,13 @@ func (s *service) RecordEventhubInfo(namespace, eventhub string, partitionCount 
 		1.0)
 }
 
-func (s *service) RecordEventhubPartitionSequenceNumber(namespace, eventhub, partitionID string, min, max int64) error {
+func (s *service) RecordEventhubPartitionSequenceNumber(namespace, eventhub, partitionID string, seqMin,
+	seqMax int64) error {
 	err := s.recorder.RecordMetric(EventhubPartitionSequenceNumberMin, map[string]string{
 		"namespace":    namespace,
 		"eventhub":     eventhub,
 		"partition_id": partitionID},
-		float64(min))
+		float64(seqMin))
 	if err != nil {
 		return err
 	}
@@ -52,21 +53,21 @@ func (s *service) RecordEventhubPartitionSequenceNumber(namespace, eventhub, par
 		"namespace":    namespace,
 		"eventhub":     eventhub,
 		"partition_id": partitionID},
-		float64(max))
+		float64(seqMax))
 }
 
-func (s *service) RecordEventhubSequenceNumberSum(namespace, eventhub string, min, max int64) error {
+func (s *service) RecordEventhubSequenceNumberSum(namespace, eventhub string, seqMin, seqMax int64) error {
 	err := s.recorder.RecordMetric(EventhubSequenceNumberMinSum, map[string]string{
 		"namespace": namespace,
 		"eventhub":  eventhub},
-		float64(min))
+		float64(seqMin))
 	if err != nil {
 		return err
 	}
 	return s.recorder.RecordMetric(EventhubSequenceNumberMaxSum, map[string]string{
 		"namespace": namespace,
 		"eventhub":  eventhub},
-		float64(max))
+		float64(seqMax))
 }
 
 func (s *service) RecordConsumerGroupInfo(namespace, eventhub string, consumerGroup string, state string) error {
@@ -99,7 +100,8 @@ func (s *service) RecordConsumerGroupEvents(namespace, eventhub, consumerGroup s
 		float64(eventCount))
 }
 
-func (s *service) RecordConsumerGroupPartitionLag(namespace, eventhub, consumerGroup, partitionID string, lag int64) error {
+func (s *service) RecordConsumerGroupPartitionLag(namespace, eventhub, consumerGroup, partitionID string,
+	lag int64) error {
 	return s.recorder.RecordMetric(ConsumerGroupPartitionLag, map[string]string{
 		"namespace":      namespace,
 		"eventhub":       eventhub,
