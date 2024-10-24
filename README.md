@@ -32,6 +32,13 @@ exporter:
     readTimeout: 15s
     # address for the http server (default: :8080)
     address: localhost:9090
+  
+  # export metrics by sending them to a pushGateway
+  pushGateway:
+    # enabled pushGateway exporter (default: false)
+    enabled: true
+    # baseUrl of the pushGateway
+    baseUrl: http://pushgateway.monitoring.svc.cluster.local
 
 collector:
   # duration after which an ownership is considered expired (default: 1m)

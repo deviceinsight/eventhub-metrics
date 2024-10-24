@@ -42,9 +42,7 @@ func (s *service) ProcessNamespace(ctx context.Context, credential *azidentity.D
 		return "", nil, fmt.Errorf("failed get namespace name: %w", err)
 	}
 
-	if err := s.metrics.RecordNamespaceInfo(namespace, endpoint); err != nil {
-		return "", nil, fmt.Errorf("failed to record namespace info metric: %w", err)
-	}
+	s.metrics.RecordNamespaceInfo(namespace, endpoint)
 	eventHubs, err := eventhub.GetEventHubs(ctx, credential, endpoint)
 	return namespace, eventHubs, err
 }
@@ -62,26 +60,19 @@ func (s *service) ProcessEventHub(ctx context.Context, credential *azidentity.De
 		return fmt.Errorf("failed to get sequence numbers: %w", err)
 	}
 
-	if err := s.metrics.RecordEventhubInfo(namespace, eventHubDetails.Name, eventHubDetails.PartitionCount,
-		eventHubDetails.MessageRetentionInDays); err != nil {
-		return fmt.Errorf("failed to record eventhub info metric: %w", err)
-	}
+	s.metrics.RecordEventhubInfo(namespace, eventHubDetails.Name, eventHubDetails.PartitionCount,
+		eventHubDetails.MessageRetentionInDays)
 
 	seqSum := eventhub.SequenceNumbers{}
 
 	for partitionID, seq := range sequenceNumbers {
-		if err := s.metrics.RecordEventhubPartitionSequenceNumber(namespace, eventHubDetails.Name, partitionID,
-			seq.Min, seq.Max); err != nil {
-			return fmt.Errorf("failed to record eventhub partition sequence number metric: %w", err)
-		}
+		s.metrics.RecordEventhubPartitionSequenceNumber(namespace, eventHubDetails.Name, partitionID,
+			seq.Min, seq.Max)
 		seqSum.Min += seq.Min
 		seqSum.Max += seq.Max
 	}
 
-	if err := s.metrics.RecordEventhubSequenceNumberSum(namespace, eventHubDetails.Name,
-		seqSum.Min, seqSum.Max); err != nil {
-		return fmt.Errorf("failed to record eventhub sequence number sum metric: %w", err)
-	}
+	s.metrics.RecordEventhubSequenceNumberSum(namespace, eventHubDetails.Name, seqSum.Min, seqSum.Max)
 
 	for _, consumerGroup := range consumerGroups {
 
@@ -98,7 +89,6 @@ func (s *service) ProcessEventHub(ctx context.Context, credential *azidentity.De
 	return nil
 }
 
-//nolint:gocognit
 func (s *service) processConsumerGroup(ctx context.Context, blobStore *checkpoints.BlobStore, endpoint string,
 	eventHub string, consumerGroup string, sequenceNumbers map[string]eventhub.SequenceNumbers, namespace string,
 	partitionCount int) error {
@@ -124,20 +114,11 @@ func (s *service) processConsumerGroup(ctx context.Context, blobStore *checkpoin
 		}
 
 		lagSum += lag
-
-		if err := s.metrics.RecordConsumerGroupPartitionLag(namespace, eventHub, consumerGroup, checkpoint.PartitionID,
-			lag); err != nil {
-			return fmt.Errorf("failed to record consumer group partition lag metric: %w", err)
-		}
+		s.metrics.RecordConsumerGroupPartitionLag(namespace, eventHub, consumerGroup, checkpoint.PartitionID, lag)
 	}
 
-	if err := s.metrics.RecordConsumerGroupLag(namespace, eventHub, consumerGroup, lagSum); err != nil {
-		return fmt.Errorf("failed to record consumer group lag metric: %w", err)
-	}
-
-	if err := s.metrics.RecordConsumerGroupEvents(namespace, eventHub, consumerGroup, sequenceSum); err != nil {
-		return fmt.Errorf("failed to record consumer group events metric: %w", err)
-	}
+	s.metrics.RecordConsumerGroupLag(namespace, eventHub, consumerGroup, lagSum)
+	s.metrics.RecordConsumerGroupEvents(namespace, eventHub, consumerGroup, sequenceSum)
 
 	ownerships, err := blobStore.ListOwnership(ctx, endpoint, eventHub, consumerGroup, nil)
 	if err != nil {
@@ -155,15 +136,11 @@ func (s *service) processConsumerGroup(ctx context.Context, blobStore *checkpoin
 		} else {
 			activeOwnerships = append(activeOwnerships, ownership)
 		}
-		if err := s.metrics.RecordConsumerGroupPartitionOwner(namespace, eventHub, consumerGroup, ownership.PartitionID,
-			ownership.OwnerID, expired); err != nil {
-			return fmt.Errorf("failed to record consumer group partition owner metric: %w", err)
-		}
+		s.metrics.RecordConsumerGroupPartitionOwner(namespace, eventHub, consumerGroup, ownership.PartitionID,
+			ownership.OwnerID, expired)
 	}
 
-	if err := s.metrics.RecordConsumerGroupOwners(namespace, eventHub, consumerGroup, len(activeOwnerships)); err != nil {
-		return fmt.Errorf("failed to record consumer group owners metric: %w", err)
-	}
+	s.metrics.RecordConsumerGroupOwners(namespace, eventHub, consumerGroup, len(activeOwnerships))
 
 	state := "unstable"
 	if len(activeOwnerships) == partitionCount {
@@ -172,8 +149,6 @@ func (s *service) processConsumerGroup(ctx context.Context, blobStore *checkpoin
 		state = "empty"
 	}
 
-	if err := s.metrics.RecordConsumerGroupInfo(namespace, eventHub, consumerGroup, state); err != nil {
-		return fmt.Errorf("failed to record consumer group info metric: %w", err)
-	}
+	s.metrics.RecordConsumerGroupInfo(namespace, eventHub, consumerGroup, state)
 	return nil
 }

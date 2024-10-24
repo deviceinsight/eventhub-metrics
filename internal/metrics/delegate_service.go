@@ -16,9 +16,15 @@ func NewDelegateService(delegates ...RecordService) Service {
 	return &service{recorder: &delegateService{delegates: delegates}}
 }
 
-func (s *delegateService) RecordMetric(metric *Metric, labels map[string]string, value float64) error {
+func (s *delegateService) RecordMetric(metric *Metric, labels map[string]string, value float64) {
 	for _, delegate := range s.delegates {
-		if err := delegate.RecordMetric(metric, labels, value); err != nil {
+		delegate.RecordMetric(metric, labels, value)
+	}
+}
+
+func (s *delegateService) PushMetrics() error {
+	for _, delegate := range s.delegates {
+		if err := delegate.PushMetrics(); err != nil {
 			return err
 		}
 	}

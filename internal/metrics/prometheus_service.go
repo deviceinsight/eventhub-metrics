@@ -70,7 +70,10 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 	_, _ = fmt.Fprintf(w, "OK\n")
 }
 
-func (s *prometheusService) RecordMetric(metric *Metric, labels map[string]string, value float64) error {
+func (s *prometheusService) RecordMetric(metric *Metric, labels map[string]string, value float64) {
 	s.gauges[metric].With(labels).Set(value)
+}
+
+func (s *prometheusService) PushMetrics() error {
 	return nil
 }

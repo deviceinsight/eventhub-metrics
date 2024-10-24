@@ -20,7 +20,7 @@ func NewAppInsightsService(instrumentationKey string) RecordService {
 	}
 }
 
-func (s *appInsightsService) RecordMetric(metric *Metric, labels map[string]string, value float64) error {
+func (s *appInsightsService) RecordMetric(metric *Metric, labels map[string]string, value float64) {
 
 	metricTelemetry := appinsights.NewMetricTelemetry(fmt.Sprintf("%s_%s", metricPrefix, metric.Name), value)
 
@@ -29,5 +29,8 @@ func (s *appInsightsService) RecordMetric(metric *Metric, labels map[string]stri
 	}
 
 	s.client.Track(metricTelemetry)
+}
+
+func (s *appInsightsService) PushMetrics() error {
 	return nil
 }

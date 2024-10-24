@@ -37,9 +37,15 @@ type PrometheusConfig struct {
 	Address     string
 }
 
+type PushGatewayConfig struct {
+	Enabled bool
+	BaseURL string
+}
+
 type ExporterConfig struct {
 	AppInsights AppInsightsConfig
 	Prometheus  PrometheusConfig
+	PushGateway PushGatewayConfig
 }
 
 type CollectorConfig struct {

@@ -52,6 +52,11 @@ func main() {
 		metricExporters = append(metricExporters, exporter)
 	}
 
+	if cfg.Exporter.PushGateway.Enabled {
+		exporter := metrics.NewPushGatewayService(cfg.Exporter.PushGateway.BaseURL)
+		metricExporters = append(metricExporters, exporter)
+	}
+
 	metricsService := metrics.NewDelegateService(metricExporters...)
 	collectorService := collector.NewService(metricsService, cfg.Collector)
 
@@ -59,6 +64,12 @@ func main() {
 		start := time.Now()
 		slog.Info("starting metrics collector")
 		collectMetrics(credential, cfg, collectorService)
+
+		if err := metricsService.PushMetrics(); err != nil {
+			slog.Error("failed to push metrics", "error", err)
+			os.Exit(1)
+		}
+
 		elapsed := time.Since(start)
 
 		slog.Info("metrics collector finished", "elapsed", elapsed.String())
@@ -79,7 +90,7 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 		ctx := context.Background()
 		namespace, eventHubs, err := collectorService.ProcessNamespace(ctx, credential, namespaceCfg.Endpoint)
 		if err != nil {
-			slog.Error("failed process namespace", "namespace", namespace, "error", err)
+			slog.Error("failed to process namespace", "namespace", namespace, "error", err)
 			os.Exit(1)
 		}
 
