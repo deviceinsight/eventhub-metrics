@@ -27,7 +27,8 @@ type BlobStorageConfig struct {
 }
 
 type AppInsightsConfig struct {
-	Enabled bool
+	Enabled            bool
+	InstrumentationKey string
 }
 
 type PrometheusConfig struct {

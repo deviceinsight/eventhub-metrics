@@ -17,6 +17,13 @@ namespaces:
     excludedConsumerGroups: \$Default|test.+
 
 exporter:
+  # export metrics to AppInsights
+  appInsights:
+    # enable appInsights exporter (default: false)
+    enabled: true
+    # instrumentation key to use
+    instrumentationKey: xxx
+
   # run a http server which exposes /metrics
   prometheus:
     # enable prometheus exporter (default: false)

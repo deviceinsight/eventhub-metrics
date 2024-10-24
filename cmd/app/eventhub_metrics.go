@@ -39,6 +39,11 @@ func main() {
 
 	var metricExporters []metrics.RecordService
 
+	if cfg.Exporter.AppInsights.Enabled {
+		exporter := metrics.NewAppInsightsService(cfg.Exporter.AppInsights.InstrumentationKey)
+		metricExporters = append(metricExporters, exporter)
+	}
+
 	if cfg.Exporter.Prometheus.Enabled {
 		exporter := metrics.NewPrometheusService()
 

@@ -24,13 +24,15 @@ type prometheusService struct {
 
 func NewPrometheusService() RecordServiceWithHTTPServer {
 
+	slog.Debug("using prometheus exporter")
+
 	registry := prometheus.NewRegistry()
 
 	var gauges = make(map[*Metric]*prometheus.GaugeVec)
 
 	for _, metric := range allMetrics {
 		gauges[metric] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: "eh_metrics",
+			Namespace: metricPrefix,
 			Name:      metric.Name,
 			Help:      metric.Help,
 		}, metric.Labels)

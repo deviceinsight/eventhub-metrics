@@ -1,5 +1,7 @@
 package metrics
 
+const metricPrefix = "eh_metrics"
+
 type Metric struct {
 	Name   string
 	Help   string
