@@ -12,7 +12,7 @@ https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-frequently-asked
 - **Consumer Group Lags:** Number of messages a consumer group is lagging behind the latest enqueued sequence number
 - **Exporters:** Metrics can be exported to Prometheus, AppInsights, PushGateway 
 - **Configurable targets:** You can configure what eventhubs or groups you'd like to export using regex expressions
-- **Deployment:** The application can be deployed as Kubernetes Deployment or Cron Job, as Azure Function or with docker directly.
+- **Deployment:** The application can be deployed as Kubernetes Deployment or Cron Job or with docker directly.
 
 ## Getting started
 
