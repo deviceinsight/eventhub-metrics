@@ -153,7 +153,8 @@ collector:
   ownershipExpirationDuration: 1m
   # determines how many eventhubs are processed concurrently (default: 8)
   concurrency: 10
-  # interval in which the metrics are updated
+  # interval in which the metrics are updated.
+  # if not specified the application will exit after one iteration.
   interval: 5m
 
 log:
