@@ -45,7 +45,7 @@ var EventhubSequenceNumberMaxSum = &Metric{
 var ConsumerGroupInfo = &Metric{
 	Name:   "consumer_group_info",
 	Help:   "consumer group info gauges. It will report 1 if the group is in the stable state, otherwise 0.",
-	Labels: []string{"eh_namespace", "eventhub", "consumer_group"},
+	Labels: []string{"eh_namespace", "eventhub", "consumer_group", "state"},
 }
 
 var ConsumerGroupOwners = &Metric{
@@ -58,6 +58,12 @@ var ConsumerGroupEventsSum = &Metric{
 	Name:   "consumer_group_events_sum",
 	Help:   "the sum of all committed sequence numbers across all partitions in an eventhub",
 	Labels: []string{"eh_namespace", "eventhub", "consumer_group"},
+}
+
+var ConsumerGroupPartitionOwner = &Metric{
+	Name:   "consumer_group_partition_owner",
+	Help:   "info about owner of a partition in a consumer group. Value is 0 if owner is expired, otherwise 1.",
+	Labels: []string{"eh_namespace", "eventhub", "consumer_group", "partition_id", "owner"},
 }
 
 var ConsumerGroupPartitionLag = &Metric{
@@ -75,4 +81,5 @@ var ConsumerGroupLag = &Metric{
 
 var allMetrics = []*Metric{NamespaceInfo, EventhubInfo, EventhubPartitionSequenceNumberMin,
 	EventhubSequenceNumberMinSum, EventhubPartitionSequenceNumberMax, EventhubSequenceNumberMaxSum, ConsumerGroupInfo,
-	ConsumerGroupOwners, ConsumerGroupEventsSum, ConsumerGroupPartitionLag, ConsumerGroupLag}
+	ConsumerGroupOwners, ConsumerGroupEventsSum, ConsumerGroupPartitionOwner, ConsumerGroupPartitionLag,
+	ConsumerGroupLag}

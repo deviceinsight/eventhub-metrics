@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"regexp"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -59,11 +60,12 @@ func main() {
 		if cfg.Collector.Interval == nil {
 			break
 		}
-		slog.Debug("waiting for next iteration", "interval", cfg.Collector.Interval.String)
+		slog.Debug("waiting for next iteration", "interval", cfg.Collector.Interval.String())
 		time.Sleep(*cfg.Collector.Interval)
 	}
 }
 
+//nolint:gocognit
 func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.Config,
 	collectorService collector.Service) {
 
@@ -83,13 +85,31 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 			os.Exit(1)
 		}
 
+		excludeEventHubsRegex, err := parseRegex(namespaceCfg.ExcludedEventHubs)
+		if err != nil {
+			slog.Error("failed to compile excludedEventHubs regex", "error", err)
+			os.Exit(1)
+		}
+
+		excludeConsumerGroupsRegex, err := parseRegex(namespaceCfg.ExcludedConsumerGroups)
+		if err != nil {
+			slog.Error("failed to compile excludedConsumerGroups regex", "error", err)
+			os.Exit(1)
+		}
+
 		limiter := concurrency.NewLimiter(cfg.Collector.Concurrency)
 		slog.Debug("using concurrency limit", "concurrency", cfg.Collector.Concurrency)
 
 		for _, eventHub := range eventHubs {
+
+			if excludeEventHubsRegex != nil && excludeEventHubsRegex.MatchString(eventHub.Name) {
+				slog.Debug("skipping excluded eventhub", "eventhub", eventHub.Name)
+				continue
+			}
+
 			started := limiter.Go(ctx, func() {
 				err := collectorService.ProcessEventHub(ctx, credential, blobStore, namespace, namespaceCfg.Endpoint,
-					&eventHub)
+					&eventHub, excludeConsumerGroupsRegex)
 				if err != nil {
 					slog.Error("failed to process eventhub", "namespace", namespace, "eventHub",
 						eventHub, "error", err)
@@ -105,4 +125,18 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 
 		limiter.Wait()
 	}
+}
+
+func parseRegex(regexString string) (*regexp.Regexp, error) {
+	var regex *regexp.Regexp
+	var err error
+
+	if regexString != "" {
+		regex, err = regexp.Compile(regexString)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return regex, nil
 }

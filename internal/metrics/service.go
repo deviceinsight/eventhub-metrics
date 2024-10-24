@@ -12,6 +12,8 @@ type Service interface {
 	RecordConsumerGroupInfo(namespace, eventhub, consumerGroup string, state string) error
 	RecordConsumerGroupOwners(namespace, eventhub, consumerGroup string, ownerCount int) error
 	RecordConsumerGroupEvents(namespace, eventhub, consumerGroup string, eventCount int64) error
+	RecordConsumerGroupPartitionOwner(namespace, eventhub, consumerGroup, partitionID, owner string,
+		expired bool) error
 	RecordConsumerGroupPartitionLag(namespace, eventhub, consumerGroup, partitionID string, lag int64) error
 	RecordConsumerGroupLag(namespace, eventhub, consumerGroup string, lag int64) error
 }
@@ -81,7 +83,8 @@ func (s *service) RecordConsumerGroupInfo(namespace, eventhub string, consumerGr
 	return s.recorder.RecordMetric(ConsumerGroupInfo, map[string]string{
 		"eh_namespace":   namespace,
 		"eventhub":       eventhub,
-		"consumer_group": consumerGroup},
+		"consumer_group": consumerGroup,
+		"state":          state},
 		value)
 }
 
@@ -99,6 +102,23 @@ func (s *service) RecordConsumerGroupEvents(namespace, eventhub, consumerGroup s
 		"eventhub":       eventhub,
 		"consumer_group": consumerGroup},
 		float64(eventCount))
+}
+
+func (s *service) RecordConsumerGroupPartitionOwner(namespace, eventhub, consumerGroup, partitionID, owner string,
+	expired bool) error {
+
+	value := 1.0
+	if expired {
+		value = 0.0
+	}
+
+	return s.recorder.RecordMetric(ConsumerGroupPartitionOwner, map[string]string{
+		"eh_namespace":   namespace,
+		"eventhub":       eventhub,
+		"consumer_group": consumerGroup,
+		"partition_id":   partitionID,
+		"owner":          owner},
+		value)
 }
 
 func (s *service) RecordConsumerGroupPartitionLag(namespace, eventhub, consumerGroup, partitionID string,

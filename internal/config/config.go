@@ -17,6 +17,8 @@ type NamespaceConfig struct {
 	Endpoint               string
 	StorageAccountEndpoint string
 	CheckpointContainer    string
+	ExcludedEventHubs      string
+	ExcludedConsumerGroups string
 }
 
 type BlobStorageConfig struct {

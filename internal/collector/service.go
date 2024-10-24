@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"regexp"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
@@ -17,7 +18,8 @@ type Service interface {
 	ProcessNamespace(ctx context.Context, credential *azidentity.DefaultAzureCredential,
 		endpoint string) (string, []eventhub.Details, error)
 	ProcessEventHub(ctx context.Context, credential *azidentity.DefaultAzureCredential,
-		blobStore *checkpoints.BlobStore, namespace, endpoint string, eventHubDetails *eventhub.Details) error
+		blobStore *checkpoints.BlobStore, namespace, endpoint string, eventHubDetails *eventhub.Details,
+		excludeConsumerGroupsRegex *regexp.Regexp) error
 }
 
 type service struct {
@@ -48,7 +50,8 @@ func (s *service) ProcessNamespace(ctx context.Context, credential *azidentity.D
 }
 
 func (s *service) ProcessEventHub(ctx context.Context, credential *azidentity.DefaultAzureCredential,
-	blobStore *checkpoints.BlobStore, namespace, endpoint string, eventHubDetails *eventhub.Details) error {
+	blobStore *checkpoints.BlobStore, namespace, endpoint string, eventHubDetails *eventhub.Details,
+	excludeConsumerGroupsRegex *regexp.Regexp) error {
 
 	consumerGroups, err := eventhub.GetConsumerGroups(ctx, credential, endpoint, eventHubDetails.Name)
 	if err != nil {
@@ -81,6 +84,12 @@ func (s *service) ProcessEventHub(ctx context.Context, credential *azidentity.De
 	}
 
 	for _, consumerGroup := range consumerGroups {
+
+		if excludeConsumerGroupsRegex != nil && excludeConsumerGroupsRegex.MatchString(consumerGroup) {
+			slog.Debug("skipping excluded consumerGroup", "consumerGroup", consumerGroup)
+			continue
+		}
+
 		if err := s.processConsumerGroup(ctx, blobStore, endpoint, eventHubDetails.Name, consumerGroup, sequenceNumbers,
 			namespace, eventHubDetails.PartitionCount); err != nil {
 			return err
@@ -89,6 +98,7 @@ func (s *service) ProcessEventHub(ctx context.Context, credential *azidentity.De
 	return nil
 }
 
+//nolint:gocognit
 func (s *service) processConsumerGroup(ctx context.Context, blobStore *checkpoints.BlobStore, endpoint string,
 	eventHub string, consumerGroup string, sequenceNumbers map[string]eventhub.SequenceNumbers, namespace string,
 	partitionCount int) error {
@@ -138,10 +148,16 @@ func (s *service) processConsumerGroup(ctx context.Context, blobStore *checkpoin
 	var activeOwnerships []azeventhubs.Ownership
 
 	for _, ownership := range ownerships {
+		expired := false
 		if eventhub.IsOwnershipExpired(ownership, s.cfg.OwnershipExpirationDuration) {
 			expiredOwnerships = append(expiredOwnerships, ownership)
+			expired = true
 		} else {
 			activeOwnerships = append(activeOwnerships, ownership)
+		}
+		if err := s.metrics.RecordConsumerGroupPartitionOwner(namespace, eventHub, consumerGroup, ownership.PartitionID,
+			ownership.OwnerID, expired); err != nil {
+			return fmt.Errorf("failed to record consumer group partition owner metric: %w", err)
 		}
 	}
 

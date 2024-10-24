@@ -11,6 +11,10 @@ namespaces:
     storageAccountEndpoint: mystorage.blob.core.windows.net
     # name of the container which stores the checkpoints
     checkpointContainer: checkpoints
+    # regex pattern to exclude consumer groups
+    excludedEventHubs: .+test.+
+    # regex pattern to exclude consumer groups
+    excludedConsumerGroups: \$Default|test.+
 
 exporter:
   # run a http server which exposes /metrics
