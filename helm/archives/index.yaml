@@ -1,0 +1,16 @@
+apiVersion: v1
+entries:
+  eventhub-metrics:
+  - apiVersion: v2
+    created: "2024-10-30T10:08:58.858441254+01:00"
+    description: A Helm chart installing eventhub-metrics
+    digest: 040a2773b45371e9230ca4339b03b5ed45078afed99d953af95d698ddb544bf0
+    home: https://gitlab.device-insight.com/dwi/eventhub-metrics
+    maintainers:
+    - name: Device Insight
+      url: https://www.device-insight.com
+    name: eventhub-metrics
+    urls:
+    - eventhub-metrics-1.0.0.tgz
+    version: 1.0.0
+generated: "2024-10-30T10:08:58.857942819+01:00"
