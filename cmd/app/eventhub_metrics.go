@@ -4,7 +4,9 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"os/signal"
 	"regexp"
+	"syscall"
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
@@ -21,20 +23,37 @@ var GitCommit string
 
 func main() {
 
+	c := make(chan os.Signal)
+	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-c
+		slog.Debug("service terminated")
+		os.Exit(1)
+	}()
+
+	os.Exit(run())
+}
+
+func run() int {
+
 	cfg, err := config.Load()
 	if err != nil {
 		slog.Error("failed to load cfg", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
 	config.InitLogger(cfg.Log)
 
 	slog.Info("service starting", "version", Version, "buildTime", BuildTime, "gitCommit", GitCommit)
 
+	defer func() {
+		slog.Debug("service stopping")
+	}()
+
 	credential, err := azidentity.NewDefaultAzureCredential(nil)
 	if err != nil {
 		slog.Error("failed to get default azure credential", "error", err)
-		os.Exit(1)
+		return 1
 	}
 
 	var metricExporters []metrics.RecordService
@@ -67,7 +86,7 @@ func main() {
 
 		if err := metricsService.PushMetrics(); err != nil {
 			slog.Error("failed to push metrics", "error", err)
-			os.Exit(1)
+			return 1
 		}
 
 		elapsed := time.Since(start)
@@ -79,11 +98,13 @@ func main() {
 		slog.Debug("waiting for next iteration", "interval", cfg.Collector.Interval.String())
 		time.Sleep(*cfg.Collector.Interval)
 	}
+
+	return 0
 }
 
 //nolint:gocognit
 func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.Config,
-	collectorService collector.Service) {
+	collectorService collector.Service) int {
 
 	for _, namespaceCfg := range cfg.Namespaces {
 
@@ -91,30 +112,33 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 		namespace, eventHubs, err := collectorService.ProcessNamespace(ctx, credential, namespaceCfg.Endpoint)
 		if err != nil {
 			slog.Error("failed to process namespace", "namespace", namespace, "error", err)
-			os.Exit(1)
+			return 1
 		}
 
 		blobStore, err := blobstorage.GetBlobStore(credential, namespaceCfg.StorageAccountEndpoint,
 			namespaceCfg.CheckpointContainer)
 		if err != nil {
 			slog.Error("failed to get blob store", "namespace", namespace, "error", err)
-			os.Exit(1)
+			return 1
 		}
 
 		excludeEventHubsRegex, err := parseRegex(namespaceCfg.ExcludedEventHubs)
 		if err != nil {
 			slog.Error("failed to compile excludedEventHubs regex", "error", err)
-			os.Exit(1)
+			return 1
 		}
 
 		excludeConsumerGroupsRegex, err := parseRegex(namespaceCfg.ExcludedConsumerGroups)
 		if err != nil {
 			slog.Error("failed to compile excludedConsumerGroups regex", "error", err)
-			os.Exit(1)
+			return 1
 		}
 
 		limiter := concurrency.NewLimiter(cfg.Collector.Concurrency)
 		slog.Debug("using concurrency limit", "concurrency", cfg.Collector.Concurrency)
+
+		inProgress := 0
+		resultChan := make(chan int)
 
 		for _, eventHub := range eventHubs {
 
@@ -129,18 +153,30 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 				if err != nil {
 					slog.Error("failed to process eventhub", "namespace", namespace, "eventHub",
 						eventHub, "error", err)
-					os.Exit(1)
+					resultChan <- 1
 				}
+				resultChan <- 0
 			})
 			if !started && ctx.Err() != nil {
 				slog.Error("failed to start process", "namespace", namespace, "eventHub", eventHub,
 					"error", err)
-				os.Exit(1)
+				return 1
+			}
+			inProgress++
+		}
+
+		for i := range inProgress {
+			slog.Debug("awaiting result", "index", i, "count", inProgress)
+			result := <-resultChan
+			if result != 0 {
+				return result
 			}
 		}
 
 		limiter.Wait()
 	}
+
+	return 0
 }
 
 func parseRegex(regexString string) (*regexp.Regexp, error) {
