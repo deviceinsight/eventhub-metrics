@@ -1,9 +1,8 @@
 BUILD_TS := $(shell date -Iseconds -u)
 COMMIT_SHA ?= $(shell git rev-parse HEAD)
 VERSION ?= $(shell git diff --quiet && git describe --exact-match --tags $(COMMIT_SHA) 2>/dev/null || echo "latest")
-DOCKER_REGISTRY ?= docker.device-insight.com
-DOCKER_GROUP ?= dwi
-HELM_REPO_URL = https://helmcharts.device-insight.com
+DOCKER_REGISTRY ?= docker.io
+DOCKER_GROUP ?= deviceinsight
 
 export CGO_ENABLED=0
 
@@ -50,27 +49,25 @@ docker-build: # Creates a docker image
 .PHONY: docker-push
 docker-push: # Pushes the docker images to the registry
 	docker tag eventhub-metrics:$(VERSION) $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:$(VERSION)
+	docker tag eventhub-metrics:$(VERSION) $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:latest
 	docker push $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:$(VERSION)
+	docker push $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:latest
 
 .PHONY: docker-publish
 docker-publish: docker-build docker-push # build and push docker image
 
 .PHONY: helm-package
 helm-package: # package helm chart
-	helm package ./helm
+	helm package ./helm/eventhub-metrics --version $(VERSION)
+	mv eventhub-metrics-$(VERSION).tgz ./helm/archives
+	helm repo index ./helm/archives
 
-.PHONY: helm-push
-helm-push: helm-package # Pushes the helm chart in a repository
-	curl -X DELETE $(HELM_REPO_URL)/api/charts/eventhub-metrics/1.0.0
-	curl --data-binary "@eventhub-metrics-1.0.0.tgz" $(HELM_REPO_URL)/api/charts
-
+# usage make release version=2.5.0
 #
-#.PHONY: docker-publish
-#docker-publish: docker-build docker-push # build and push docker image
-
-#.PHONY: helm-publish
-#helm-publish: # build and push docker image
-#
-#   - "helm repo add chartmuseum https://helmcharts.device-insight.com"
-#   - "helm package helm/mett"
-#   - "helm push -f helm/mett chartmuseum"
+.PHONY: release
+release: docker-publish helm-package
+	git add helm/archives/.
+	git commit -m "releases $(VERSION)"
+	git tag -a v$(VERSION) -m "release v$(VERSION)"
+	git push origin
+	git push origin v$(VERSION)
