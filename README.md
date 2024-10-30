@@ -18,11 +18,22 @@ https://learn.microsoft.com/en-us/azure/event-hubs/apache-kafka-frequently-asked
 
 ### 🐳 Docker image
 
-TBD
+A docker image is available on [docker hub](https://hub.docker.com/repository/docker/deviceinsight/eventhub-metrics):
+
+```shell
+docker pull deviceinsight/eventhub-metrics:latest
+```
 
 ### ☸ Helm chart
 
-TBD
+A helm chart is maintained as part of this repository.
+Install instructions:
+
+```shell
+helm repo add eventhub-metrics https://raw.githubusercontent.com/deviceinsight/eventhub-metrics/main/helm/archives
+helm repo update
+helm install -f values.yaml --name=eventhub-metrics eventhub-metrics/eventhub-metrics
+```
 
 ### 📊 Grafana Dashboards
 
