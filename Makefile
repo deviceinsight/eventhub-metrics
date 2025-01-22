@@ -62,7 +62,7 @@ helm-package: # package helm chart
 	mv eventhub-metrics-$(VERSION).tgz ./helm/archives
 	helm repo index ./helm/archives
 
-# usage make release version=2.5.0
+# usage make release VERSION=1.1.0
 #
 .PHONY: release
 release: docker-publish helm-package
