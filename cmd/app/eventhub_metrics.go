@@ -77,6 +77,11 @@ func run() int {
 		metricExporters = append(metricExporters, exporter)
 	}
 
+	if cfg.Exporter.Otlp.Enabled {
+		exporter := metrics.NewOtlpService(cfg.Exporter.Otlp.BaseURL, cfg.Exporter.Otlp.Protocol)
+		metricExporters = append(metricExporters, exporter)
+	}
+
 	metricsService := metrics.NewDelegateService(metricExporters...)
 	collectorService := collector.NewService(metricsService, cfg.Collector)
 
