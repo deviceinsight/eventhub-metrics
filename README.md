@@ -177,3 +177,43 @@ log:
   format: json
 ```
 
+## Running in Azure Kubernetes Service (AKS)
+
+### Required Workload identity
+
+The application requires a workload identity with the following role assignments:
+
+1. [azure-event-hubs-data-receiver role](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles#azure-event-hubs-data-receiver) is required with scope on all
+  eventhub namespaces that need to be queried. Since the application lists all eventhubs in a namespace it is currently
+  not sufficient to have role assignments on individual eventhubs.
+2. [storage-blob-data-reader role](https://learn.microsoft.com/en-us/azure/role-based-access-control/built-in-roles/storage#storage-blob-data-reader) for all configured storage
+  accounts is required, so that the checkpoints for all consumerGroups can be read from the storage accounts.
+
+### Example Helm configuration
+
+```yaml
+managedIdentity:
+    clientId: <clientId of the workload identity>
+resources:
+    limits:
+        cpu: 100m
+        memory: 128Mi
+    requests:
+        cpu: 100m
+        memory: 128Mi
+config:
+    namespaces:
+        - endpoint: <your-namespace>.servicebus.windows.net
+          storageAccountEndpoint: <your-storage>.blob.core.windows.net
+          checkpointContainer: <checkpoint-container-name>
+          excludedConsumerGroups: \$Default
+    exporter:
+        prometheus:
+            enabled: true
+    collector:
+        concurrency: 10
+        interval: 5m
+    log:
+        level: debug
+        format: json
+```
