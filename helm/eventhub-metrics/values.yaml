@@ -60,6 +60,12 @@ scheduling:
 ## Directly expanded into the deployment chart.
 nodeSelector: {}
 
+
+## A serviceAccountName for an existing serviceAccount can be configured for the deployment
+# serviceAccountName: MySA
+
+## If no serviceAccountName is specified a managedIdentity has to be specified here.
+## The managedIdentity is used to create a serviceAccount with role and roleBinding to be used by the deployment
 managedIdentity: {}
 
 ## Enables scheduling on tainted nodes.

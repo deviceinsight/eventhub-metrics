@@ -34,7 +34,11 @@ spec:
         checksum/random: {{ randAlphaNum 10 | quote }}
 {{- end }}
     spec:
+{{- if not (hasKey .Values "serviceAccountName") }}
       serviceAccountName: {{ template "eventhub-metrics.fullname" . }}
+{{- else }}
+      serviceAccountName: {{ .Values.serviceAccountName }}
+{{- end }}
 {{- if .Values.scheduling.singletonPerNode }}
       affinity:
         podAntiAffinity:
