@@ -130,9 +130,11 @@ namespaces:
     storageAccountEndpoint: mystorage.blob.core.windows.net
     # name of the container which stores the checkpoints
     checkpointContainer: checkpoints
-    # regex pattern to exclude consumer groups
+    # regex pattern to include event hubs (optional)
+    includedEventHubs: .+test.+
+    # regex pattern to exclude event hubs (optional)
     excludedEventHubs: .+test.+
-    # regex pattern to exclude consumer groups
+    # regex pattern to exclude consumer groups (optional)
     excludedConsumerGroups: \$Default|test.+
 
 exporter:

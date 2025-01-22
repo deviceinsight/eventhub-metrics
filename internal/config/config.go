@@ -17,6 +17,7 @@ type NamespaceConfig struct {
 	Endpoint               string
 	StorageAccountEndpoint string
 	CheckpointContainer    string
+	IncludedEventHubs      string
 	ExcludedEventHubs      string
 	ExcludedConsumerGroups string
 }

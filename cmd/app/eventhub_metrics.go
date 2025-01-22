@@ -122,6 +122,12 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 			return 1
 		}
 
+		includedEventHubsRegex, err := parseRegex(namespaceCfg.IncludedEventHubs)
+		if err != nil {
+			slog.Error("failed to compile includedEventHubs regex", "error", err)
+			return 1
+		}
+
 		excludeEventHubsRegex, err := parseRegex(namespaceCfg.ExcludedEventHubs)
 		if err != nil {
 			slog.Error("failed to compile excludedEventHubs regex", "error", err)
@@ -142,8 +148,15 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 
 		for _, eventHub := range eventHubs {
 
+			if includedEventHubsRegex != nil && !includedEventHubsRegex.MatchString(eventHub.Name) {
+				slog.Debug("skipping non-included eventhub", "eventhub", eventHub.Name,
+					"regex", includedEventHubsRegex.String())
+				continue
+			}
+
 			if excludeEventHubsRegex != nil && excludeEventHubsRegex.MatchString(eventHub.Name) {
-				slog.Debug("skipping excluded eventhub", "eventhub", eventHub.Name)
+				slog.Debug("skipping excluded eventhub", "eventhub", eventHub.Name,
+					"regex", excludeEventHubsRegex.String())
 				continue
 			}
 

@@ -41,7 +41,7 @@ func GetEventHubs(ctx context.Context, credential *azidentity.DefaultAzureCreden
 
 	response, err := performRequest(ctx, token, requestURL)
 	if err != nil {
-		return nil, fmt.Errorf("failed to peform request: %w", err)
+		return nil, fmt.Errorf("failed to request event hubs: %w", err)
 	}
 	defer closeBody(response)
 
