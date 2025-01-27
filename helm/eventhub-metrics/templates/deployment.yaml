@@ -57,7 +57,7 @@ spec:
 {{- end }}
       containers:
         - name: {{ .Chart.Name }}
-          image: "{{ .Values.image.repository }}/{{ .Values.image.group }}/eventhub-metrics:{{ required "image.version is required" .Values.image.version }}"
+          image: "{{ .Values.image.repository }}/{{ .Values.image.group }}/eventhub-metrics:{{ .Values.image.version | default .Chart.Version }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
             - containerPort: 8080

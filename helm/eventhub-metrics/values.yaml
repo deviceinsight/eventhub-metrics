@@ -5,7 +5,6 @@
 image:
   repository: docker.io
   group: deviceinsight
-  version: latest
   pullPolicy: IfNotPresent
 
 resources: {}
