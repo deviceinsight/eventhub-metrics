@@ -15,16 +15,15 @@ import (
 
 type NamespaceConfig struct {
 	Endpoint               string
-	StorageAccountEndpoint string
-	CheckpointContainer    string
 	IncludedEventHubs      string
 	ExcludedEventHubs      string
 	ExcludedConsumerGroups string
 }
 
 type BlobStorageConfig struct {
-	Name     string
-	Endpoint string
+	Endpoint           string
+	IncludedContainers string
+	ExcludedContainers string
 }
 
 type AppInsightsConfig struct {
@@ -61,10 +60,11 @@ type LogConfig struct {
 }
 
 type Config struct {
-	Namespaces []NamespaceConfig
-	Exporter   ExporterConfig
-	Collector  CollectorConfig
-	Log        LogConfig
+	Namespaces      []NamespaceConfig
+	StorageAccounts []BlobStorageConfig
+	Exporter        ExporterConfig
+	Collector       CollectorConfig
+	Log             LogConfig
 }
 
 const EnvPrefix string = "EH_METRICS_"

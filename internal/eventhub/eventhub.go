@@ -3,13 +3,11 @@ package eventhub
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"net/url"
-	"path"
 	"strings"
 	"time"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/deviceinsight/eventhub-metrics/internal/rest"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
 )
@@ -29,26 +27,21 @@ type SequenceNumbers struct {
 func GetEventHubs(ctx context.Context, credential *azidentity.DefaultAzureCredential,
 	endpoint string) ([]Details, error) {
 
-	token, err := getToken(ctx, credential, endpoint)
+	token, err := rest.GetToken(ctx, credential, endpoint, "/.default")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token: %w", err)
 	}
 
-	requestURL, err := GetNamespaceURL(endpoint, "/$Resources/Eventhubs?api-version=2014-01")
+	requestURL, err := rest.GetURL(endpoint, "/$Resources/Eventhubs?api-version=2014-01")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse event hubs request url: %w", err)
 	}
 
-	response, err := performRequest(ctx, token, requestURL)
+	feed, err := rest.PerformRequest(ctx, token, requestURL, parseXMLResponse)
 	if err != nil {
 		return nil, fmt.Errorf("failed to request event hubs: %w", err)
 	}
-	defer closeBody(response)
 
-	feed, err := parseXMLResponse(response)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse xml response: %w", err)
-	}
 	eventHubs := make([]Details, len(feed.Entry))
 	for i, entry := range feed.Entry {
 		eventHubs[i] = Details{
@@ -65,26 +58,21 @@ func GetEventHubs(ctx context.Context, credential *azidentity.DefaultAzureCreden
 func GetConsumerGroups(ctx context.Context, credential *azidentity.DefaultAzureCredential, endpoint string,
 	eventHub string) ([]string, error) {
 
-	token, err := getToken(ctx, credential, endpoint)
+	token, err := rest.GetToken(ctx, credential, endpoint, "/.default")
 	if err != nil {
 		return nil, fmt.Errorf("failed to get token: %w", err)
 	}
 
-	requestURL, err := GetNamespaceURL(endpoint, eventHub, "/consumergroups?api-version=2014-01")
+	requestURL, err := rest.GetURL(endpoint, eventHub, "/consumergroups?api-version=2014-01")
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse consumer groups request url: %w", err)
 	}
 
-	response, err := performRequest(ctx, token, requestURL)
+	feed, err := rest.PerformRequest(ctx, token, requestURL, parseXMLResponse)
 	if err != nil {
-		return nil, fmt.Errorf("failed to peform request: %w", err)
+		return nil, fmt.Errorf("failed to request event hubs: %w", err)
 	}
-	defer closeBody(response)
 
-	feed, err := parseXMLResponse(response)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse xml response: %w", err)
-	}
 	consumerGroups := make([]string, len(feed.Entry))
 	for i, entry := range feed.Entry {
 		consumerGroups[i] = entry.Title
@@ -93,52 +81,10 @@ func GetConsumerGroups(ctx context.Context, credential *azidentity.DefaultAzureC
 	return consumerGroups, nil
 }
 
-func getToken(ctx context.Context, credential *azidentity.DefaultAzureCredential, endpoint string) (string, error) {
-
-	scope, err := GetNamespaceURL(endpoint, "/.default")
-	if err != nil {
-		return "", fmt.Errorf("failed to parse scope: %w", err)
-	}
-
-	options := policy.TokenRequestOptions{Scopes: []string{scope.String()}}
-	token, err := credential.GetToken(ctx, options)
-	if err != nil {
-		return "", fmt.Errorf("failed to get token: %w", err)
-	}
-	return token.Token, nil
-}
-
-func performRequest(ctx context.Context, token string, url *url.URL) (*http.Response, error) {
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url.String(), nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Add("Authorization", fmt.Sprintf("Bearer %s", token))
-
-	res, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("failed to make http request: %w", err)
-	}
-
-	if res.StatusCode < 200 || res.StatusCode >= 300 {
-		return nil, fmt.Errorf("request failed with status=%d", res.StatusCode)
-	}
-	return res, nil
-}
-
-func closeBody(response *http.Response) {
-	if response == nil {
-		return
-	}
-	_ = response.Body.Close()
-}
-
 func GetSequenceNumbers(ctx context.Context, credential *azidentity.DefaultAzureCredential,
 	endpoint string, eventhubDetails *Details) (map[string]SequenceNumbers, error) {
 
-	eventhubURL, err := GetNamespaceURL(endpoint)
+	eventhubURL, err := rest.GetURL(endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse eventhub url: %w", err)
 	}
@@ -176,19 +122,8 @@ func IsOwnershipExpired(ownership azeventhubs.Ownership, expirationDuration time
 	return ownership.OwnerID == ""
 }
 
-func GetNamespaceURL(endpoint string, paths ...string) (*url.URL, error) {
-	u, err := url.Parse(fmt.Sprintf("https://%s", endpoint))
-	if err != nil {
-		return nil, err
-	}
-	for _, p := range paths {
-		u.Path = path.Join(u.Path, p)
-	}
-	return u, nil
-}
-
 func GetNamespaceName(endpoint string) (string, error) {
-	u, err := GetNamespaceURL(endpoint)
+	u, err := rest.GetURL(endpoint)
 	if err != nil {
 		return "", fmt.Errorf("failed to parse u: %w", err)
 	}

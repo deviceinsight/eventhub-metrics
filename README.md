@@ -126,16 +126,21 @@ namespaces:
   - 
     # fully qualified namespace name of the Event Hubs namespace name
     endpoint: my-eventhub.servicebus.windows.net
-    # name of the Blob Service endpoint which stores the checkpoints
-    storageAccountEndpoint: mystorage.blob.core.windows.net
-    # name of the container which stores the checkpoints
-    checkpointContainer: checkpoints
     # regex pattern to include event hubs (optional)
     includedEventHubs: .+test.+
     # regex pattern to exclude event hubs (optional)
     excludedEventHubs: .+test.+
     # regex pattern to exclude consumer groups (optional)
     excludedConsumerGroups: \$Default|test.+
+
+storageAccounts:
+  -
+    # name of the Blob Service endpoint which stores the checkpoints
+    endpoint: mystorage.blob.core.windows.net
+    # regex pattern to include containers which store checkpoints (optional)
+    includedContainers: .+test.+
+    # regex pattern to exclude containers which store checkpoints (optional)
+    excludedContainers: .+test.+
 
 exporter:
   # export metrics to AppInsights
@@ -205,8 +210,9 @@ config:
     namespaces:
         - endpoint: <your-namespace>.servicebus.windows.net
           storageAccountEndpoint: <your-storage>.blob.core.windows.net
-          checkpointContainer: <checkpoint-container-name>
           excludedConsumerGroups: \$Default
+    storageAccounts:
+      - endpoint: <your-storage>.blob.core.windows.net
     exporter:
         prometheus:
             enabled: true

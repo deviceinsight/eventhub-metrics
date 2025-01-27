@@ -18,7 +18,7 @@ type Service interface {
 	ProcessNamespace(ctx context.Context, credential *azidentity.DefaultAzureCredential,
 		endpoint string) (string, []eventhub.Details, error)
 	ProcessEventHub(ctx context.Context, credential *azidentity.DefaultAzureCredential,
-		blobStore *checkpoints.BlobStore, namespace, endpoint string, eventHubDetails *eventhub.Details,
+		blobStores map[string]*checkpoints.BlobStore, namespace, endpoint string, eventHubDetails *eventhub.Details,
 		excludeConsumerGroupsRegex *regexp.Regexp) error
 }
 
@@ -48,7 +48,7 @@ func (s *service) ProcessNamespace(ctx context.Context, credential *azidentity.D
 }
 
 func (s *service) ProcessEventHub(ctx context.Context, credential *azidentity.DefaultAzureCredential,
-	blobStore *checkpoints.BlobStore, namespace, endpoint string, eventHubDetails *eventhub.Details,
+	blobStores map[string]*checkpoints.BlobStore, namespace, endpoint string, eventHubDetails *eventhub.Details,
 	excludeConsumerGroupsRegex *regexp.Regexp) error {
 
 	consumerGroups, err := eventhub.GetConsumerGroups(ctx, credential, endpoint, eventHubDetails.Name)
@@ -78,6 +78,12 @@ func (s *service) ProcessEventHub(ctx context.Context, credential *azidentity.De
 
 		if excludeConsumerGroupsRegex != nil && excludeConsumerGroupsRegex.MatchString(consumerGroup) {
 			slog.Debug("skipping excluded consumerGroup", "consumerGroup", consumerGroup)
+			continue
+		}
+
+		blobStore, ok := blobStores[consumerGroup]
+		if !ok {
+			slog.Warn("consumerGroup without associated checkpointStore", "consumerGroup", consumerGroup)
 			continue
 		}
 

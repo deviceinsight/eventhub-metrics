@@ -9,10 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/deviceinsight/eventhub-metrics/internal/concurrency"
+
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/deviceinsight/eventhub-metrics/internal/blobstorage"
 	"github.com/deviceinsight/eventhub-metrics/internal/collector"
-	"github.com/deviceinsight/eventhub-metrics/internal/concurrency"
 	"github.com/deviceinsight/eventhub-metrics/internal/config"
 	"github.com/deviceinsight/eventhub-metrics/internal/metrics"
 )
@@ -106,19 +107,18 @@ func run() int {
 func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.Config,
 	collectorService collector.Service) int {
 
+	ctx := context.Background()
+	storedGroups, err := getCheckpointContainerInfos(ctx, credential, cfg.StorageAccounts)
+	if err != nil {
+		slog.Error("failed to get checkpoint container infos", "error", err)
+		return 1
+	}
+
 	for _, namespaceCfg := range cfg.Namespaces {
 
-		ctx := context.Background()
 		namespace, eventHubs, err := collectorService.ProcessNamespace(ctx, credential, namespaceCfg.Endpoint)
 		if err != nil {
 			slog.Error("failed to process namespace", "namespace", namespace, "error", err)
-			return 1
-		}
-
-		blobStore, err := blobstorage.GetBlobStore(credential, namespaceCfg.StorageAccountEndpoint,
-			namespaceCfg.CheckpointContainer)
-		if err != nil {
-			slog.Error("failed to get blob store", "namespace", namespace, "error", err)
 			return 1
 		}
 
@@ -160,8 +160,14 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 				continue
 			}
 
+			blobStores, err := blobstorage.GetBlobStores(credential, storedGroups, namespaceCfg.Endpoint, eventHub.Name)
+			if err != nil {
+				slog.Error("failed to get blob stores", "namespace", namespace, "error", err)
+				return 1
+			}
+
 			started := limiter.Go(ctx, func() {
-				err := collectorService.ProcessEventHub(ctx, credential, blobStore, namespace, namespaceCfg.Endpoint,
+				err := collectorService.ProcessEventHub(ctx, credential, blobStores, namespace, namespaceCfg.Endpoint,
 					&eventHub, excludeConsumerGroupsRegex)
 				if err != nil {
 					slog.Error("failed to process eventhub", "namespace", namespace, "eventHub",
@@ -190,6 +196,39 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 	}
 
 	return 0
+}
+
+func getCheckpointContainerInfos(ctx context.Context, credential *azidentity.DefaultAzureCredential,
+	storageAccounts []config.BlobStorageConfig) (blobstorage.StoredGroupsMap, error) {
+
+	containerInfos := make(blobstorage.StoredGroupsMap)
+
+	for _, storageAccountCfg := range storageAccounts {
+
+		includedContainersRegex, err := parseRegex(storageAccountCfg.IncludedContainers)
+		if err != nil {
+			slog.Error("failed to compile includedContainers regex", "error", err)
+			return nil, err
+		}
+
+		excludedContainersRegex, err := parseRegex(storageAccountCfg.ExcludedContainers)
+		if err != nil {
+			slog.Error("failed to compile excludedContainers regex", "error", err)
+			return nil, err
+		}
+
+		infos, err := blobstorage.GetContainerInfos(ctx, credential, storageAccountCfg.Endpoint,
+			includedContainersRegex, excludedContainersRegex)
+		if err != nil {
+			return nil, err
+		}
+
+		for storageContainer, storedConsumerGroups := range infos {
+			containerInfos[storageContainer] = storedConsumerGroups
+		}
+	}
+
+	return containerInfos, nil
 }
 
 func parseRegex(regexString string) (*regexp.Regexp, error) {
