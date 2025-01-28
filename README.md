@@ -165,6 +165,15 @@ exporter:
     enabled: true
     # baseUrl of the pushGateway
     baseUrl: http://pushgateway.monitoring.svc.cluster.local
+    
+  # export metrics by sending them to an OpenTelemetry collector
+  otlp:
+    # enable OpenTelemetry exporter (default: false)
+    enabled: true
+    # protocol to use (default: grpc)
+    protocol: http
+    # baseUrl of the OpenTelemetry collector
+    baseUrl: http://localhost:4318
 
 collector:
   # duration after which an ownership is considered expired (default: 1m)
@@ -222,4 +231,30 @@ config:
     log:
         level: debug
         format: json
+```
+
+## Development
+
+### OTLP Exporter
+
+In order to test the _OTLP Exporter_ locally, we can spin up a docker container with Grafana and an OpenTelemetry Collector:
+
+```shell
+docker run --rm \
+  --env GF_AUTH_ANONYMOUS_ENABLED=true \
+  --env GF_AUTH_ANONYMOUS_ORG_ROLE=Admin \
+  -p "3000:3000" \
+  -p "4317:4317" \
+  -p "4318:4318" \
+  grafana/otel-lgtm:latest
+```
+
+and use the following config:
+
+```yaml
+...
+exporter:
+  otlp:
+    enabled: true
+    baseURL: "http://localhost:4317"
 ```

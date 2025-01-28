@@ -42,10 +42,17 @@ type PushGatewayConfig struct {
 	BaseURL string
 }
 
+type OtlpConfig struct {
+	Enabled  bool
+	BaseURL  string
+	Protocol string
+}
+
 type ExporterConfig struct {
 	AppInsights AppInsightsConfig
 	Prometheus  PrometheusConfig
 	PushGateway PushGatewayConfig
+	Otlp        OtlpConfig
 }
 
 type CollectorConfig struct {
@@ -87,6 +94,7 @@ func Load() (*Config, error) {
 		"collector.concurrency":                 8, //nolint:mnd // just a default
 		"exporter.prometheus.address":           ":8080",
 		"exporter.prometheus.readTimeout":       "1s",
+		"exporter.otlp.protocol":                "grpc",
 	}, "."), nil); err != nil {
 		return nil, fmt.Errorf("failed to load config defaults: %w", err)
 	}
