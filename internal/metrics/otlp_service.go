@@ -2,14 +2,15 @@ package metrics
 
 import (
 	"context"
+	"log/slog"
+	"time"
+
 	"go.opentelemetry.io/otel/attribute"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
 	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetrichttp"
 	"go.opentelemetry.io/otel/sdk/instrumentation"
 	"go.opentelemetry.io/otel/sdk/metric"
 	"go.opentelemetry.io/otel/sdk/metric/metricdata"
-	"log/slog"
-	"time"
 )
 
 type OtlpService struct {
@@ -24,18 +25,20 @@ func NewOtlpService(baseURL string, protocol string) RecordService {
 	var exporter metric.Exporter
 	var err error
 
-	if protocol == "grpc" {
+	switch protocol {
+	case "grpc":
 		exporter, err = otlpmetricgrpc.New(context.Background(),
 			otlpmetricgrpc.WithEndpointURL(baseURL),
 		)
-	} else if protocol == "http" {
+	case "http":
 		exporter, err = otlpmetrichttp.New(context.Background(),
 			otlpmetrichttp.WithEndpointURL(baseURL),
 		)
-	} else {
+	default:
 		slog.Error("unsupported protocol", "protocol", protocol)
 		return nil
 	}
+
 	if err != nil {
 		slog.Error("failed to create exporter", "error", err)
 		return nil
@@ -70,7 +73,7 @@ func (s *OtlpService) RecordMetric(metric *Metric, labels map[string]string, val
 	}
 
 	otelMetric := metricdata.Metrics{
-		Name:        metric.Name,
+		Name:        metricPrefix + "_" + metric.Name,
 		Description: metric.Help,
 		Data:        gauge,
 	}

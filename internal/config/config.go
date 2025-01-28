@@ -95,7 +95,6 @@ func Load() (*Config, error) {
 		"exporter.prometheus.address":           ":8080",
 		"exporter.prometheus.readTimeout":       "1s",
 		"exporter.otlp.protocol":                "grpc",
-		"exporter.otlp.baseURL":                 "http://localhost:4317",
 	}, "."), nil); err != nil {
 		return nil, fmt.Errorf("failed to load config defaults: %w", err)
 	}
