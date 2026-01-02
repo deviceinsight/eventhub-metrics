@@ -9,7 +9,7 @@ import (
 	"github.com/deviceinsight/eventhub-metrics/internal/rest"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 )
 
 type Details struct {

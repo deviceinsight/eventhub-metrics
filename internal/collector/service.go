@@ -7,8 +7,8 @@ import (
 	"regexp"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs"
-	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/checkpoints"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
+	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/checkpoints"
 	"github.com/deviceinsight/eventhub-metrics/internal/config"
 	"github.com/deviceinsight/eventhub-metrics/internal/eventhub"
 	"github.com/deviceinsight/eventhub-metrics/internal/metrics"
