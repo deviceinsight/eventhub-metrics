@@ -59,6 +59,7 @@ type CollectorConfig struct {
 	OwnershipExpirationDuration time.Duration
 	Concurrency                 int
 	Interval                    *time.Duration
+	ExitOnAuthenticationError   bool
 }
 
 type LogConfig struct {
@@ -92,6 +93,7 @@ func Load() (*Config, error) {
 		"log.format":                            "JSON",
 		"collector.ownershipExpirationDuration": time.Minute,
 		"collector.concurrency":                 8, //nolint:mnd // just a default
+		"collector.exitOnAuthenticationError":   true,
 		"exporter.prometheus.address":           ":8080",
 		"exporter.prometheus.readTimeout":       "1s",
 		"exporter.otlp.protocol":                "grpc",

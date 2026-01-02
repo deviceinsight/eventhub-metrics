@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -16,6 +18,7 @@ import (
 	"github.com/deviceinsight/eventhub-metrics/internal/collector"
 	"github.com/deviceinsight/eventhub-metrics/internal/config"
 	"github.com/deviceinsight/eventhub-metrics/internal/metrics"
+	"github.com/deviceinsight/eventhub-metrics/internal/rest"
 )
 
 var Version string
@@ -88,7 +91,20 @@ func run() int {
 	for {
 		start := time.Now()
 		slog.Info("starting metrics collector")
-		collectMetrics(credential, cfg, collectorService)
+		err := collectMetrics(credential, cfg, collectorService)
+
+		if err != nil {
+			if errors.Is(err, rest.ErrAuthentication) {
+				slog.Error("authentication error occurred", "error", err)
+				if cfg.Collector.ExitOnAuthenticationError {
+					slog.Error("exiting due to authentication error (exitOnAuthenticationError=true)")
+					return 1
+				}
+				slog.Warn("continuing despite authentication error (exitOnAuthenticationError=false)")
+			} else {
+				slog.Error("metrics collection failed", "error", err)
+			}
+		}
 
 		if err := metricsService.PushMetrics(); err != nil {
 			slog.Error("failed to push metrics", "error", err)
@@ -110,46 +126,41 @@ func run() int {
 
 //nolint:gocognit
 func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.Config,
-	collectorService collector.Service) int {
+	collectorService collector.Service) error {
 
 	ctx := context.Background()
 	storedGroups, err := getCheckpointContainerInfos(ctx, credential, cfg.StorageAccounts)
 	if err != nil {
-		slog.Error("failed to get checkpoint container infos", "error", err)
-		return 1
+		return fmt.Errorf("failed to get checkpoint container infos: %w", err)
 	}
 
 	for _, namespaceCfg := range cfg.Namespaces {
 
 		namespace, eventHubs, err := collectorService.ProcessNamespace(ctx, credential, namespaceCfg.Endpoint)
 		if err != nil {
-			slog.Error("failed to process namespace", "namespace", namespace, "error", err)
-			return 1
+			return fmt.Errorf("failed to process namespace %s: %w", namespace, err)
 		}
 
 		includedEventHubsRegex, err := parseRegex(namespaceCfg.IncludedEventHubs)
 		if err != nil {
-			slog.Error("failed to compile includedEventHubs regex", "error", err)
-			return 1
+			return fmt.Errorf("failed to compile includedEventHubs regex: %w", err)
 		}
 
 		excludeEventHubsRegex, err := parseRegex(namespaceCfg.ExcludedEventHubs)
 		if err != nil {
-			slog.Error("failed to compile excludedEventHubs regex", "error", err)
-			return 1
+			return fmt.Errorf("failed to compile excludedEventHubs regex: %w", err)
 		}
 
 		excludeConsumerGroupsRegex, err := parseRegex(namespaceCfg.ExcludedConsumerGroups)
 		if err != nil {
-			slog.Error("failed to compile excludedConsumerGroups regex", "error", err)
-			return 1
+			return fmt.Errorf("failed to compile excludedConsumerGroups regex: %w", err)
 		}
 
 		limiter := concurrency.NewLimiter(cfg.Collector.Concurrency)
 		slog.Debug("using concurrency limit", "concurrency", cfg.Collector.Concurrency)
 
 		inProgress := 0
-		resultChan := make(chan int)
+		resultChan := make(chan error)
 
 		for _, eventHub := range eventHubs {
 
@@ -167,40 +178,36 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 
 			blobStores, err := blobstorage.GetBlobStores(credential, storedGroups, namespaceCfg.Endpoint, eventHub.Name)
 			if err != nil {
-				slog.Error("failed to get blob stores", "namespace", namespace, "error", err)
-				return 1
+				return fmt.Errorf("failed to get blob stores for namespace %s: %w", namespace, err)
 			}
 
 			started := limiter.Go(ctx, func() {
 				err := collectorService.ProcessEventHub(ctx, credential, blobStores, namespace, namespaceCfg.Endpoint,
 					&eventHub, excludeConsumerGroupsRegex)
 				if err != nil {
-					slog.Error("failed to process eventhub", "namespace", namespace, "eventHub",
-						eventHub, "error", err)
-					resultChan <- 1
+					resultChan <- fmt.Errorf("failed to process eventhub %s in namespace %s: %w", eventHub.Name, namespace, err)
+					return
 				}
-				resultChan <- 0
+				resultChan <- nil
 			})
 			if !started && ctx.Err() != nil {
-				slog.Error("failed to start process", "namespace", namespace, "eventHub", eventHub,
-					"error", err)
-				return 1
+				return fmt.Errorf("failed to start process for eventhub %s in namespace %s: %w", eventHub.Name, namespace, ctx.Err())
 			}
 			inProgress++
 		}
 
 		for i := range inProgress {
 			slog.Debug("awaiting result", "index", i, "count", inProgress)
-			result := <-resultChan
-			if result != 0 {
-				return result
+			err := <-resultChan
+			if err != nil {
+				return err
 			}
 		}
 
 		limiter.Wait()
 	}
 
-	return 0
+	return nil
 }
 
 func getCheckpointContainerInfos(ctx context.Context, credential *azidentity.DefaultAzureCredential,

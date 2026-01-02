@@ -183,6 +183,8 @@ collector:
   # interval in which the metrics are updated.
   # if not specified the application will exit after one iteration.
   interval: 5m
+  # exit the application when authentication errors (401) occur (default: true)
+  exitOnAuthenticationError: true
 
 log:
   # one of debug, info, warn, error (default: info)

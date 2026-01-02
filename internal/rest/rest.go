@@ -78,6 +78,9 @@ func performRequest(ctx context.Context, token string, url *url.URL) (*http.Resp
 		body, _ := io.ReadAll(res.Body)
 		defer closeBody(res)
 		slog.Debug("request failed", "status", res.StatusCode, "body", string(body))
+		if res.StatusCode == 401 {
+			return nil, fmt.Errorf("%w: request failed with status=%d", ErrAuthentication, res.StatusCode)
+		}
 		return nil, fmt.Errorf("request failed with status=%d", res.StatusCode)
 	}
 	return res, nil
