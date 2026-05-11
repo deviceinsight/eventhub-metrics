@@ -109,9 +109,7 @@ func listDirectories(ctx context.Context, client *container.Client, prefix strin
 					return nil, err
 				}
 
-				for _, subDir := range subDirectories {
-					directories = append(directories, subDir)
-				}
+				directories = append(directories, subDirectories...)
 			}
 		}
 	}

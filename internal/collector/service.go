@@ -131,15 +131,11 @@ func (s *service) processConsumerGroup(ctx context.Context, blobStore *checkpoin
 		return fmt.Errorf("failed to list ownership: %w", err)
 	}
 
-	var expiredOwnerships []azeventhubs.Ownership
 	var activeOwnerships []azeventhubs.Ownership
 
 	for _, ownership := range ownerships {
-		expired := false
-		if eventhub.IsOwnershipExpired(ownership, s.cfg.OwnershipExpirationDuration) {
-			expiredOwnerships = append(expiredOwnerships, ownership)
-			expired = true
-		} else {
+		expired := eventhub.IsOwnershipExpired(ownership, s.cfg.OwnershipExpirationDuration)
+		if !expired {
 			activeOwnerships = append(activeOwnerships, ownership)
 		}
 		s.metrics.RecordConsumerGroupPartitionOwner(namespace, eventHub, consumerGroup, ownership.PartitionID,

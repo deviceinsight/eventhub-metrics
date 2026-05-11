@@ -27,7 +27,7 @@ var GitCommit string
 
 func main() {
 
-	c := make(chan os.Signal)
+	c := make(chan os.Signal, 1)
 	signal.Notify(c, os.Interrupt, syscall.SIGTERM)
 	go func() {
 		<-c
@@ -38,6 +38,7 @@ func main() {
 	os.Exit(run())
 }
 
+//nolint:gocognit
 func run() int {
 
 	cfg, err := config.Load()
@@ -191,7 +192,8 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 				resultChan <- nil
 			})
 			if !started && ctx.Err() != nil {
-				return fmt.Errorf("failed to start process for eventhub %s in namespace %s: %w", eventHub.Name, namespace, ctx.Err())
+				return fmt.Errorf("failed to start process for eventhub %s in namespace %s: %w",
+					eventHub.Name, namespace, ctx.Err())
 			}
 			inProgress++
 		}
