@@ -11,14 +11,13 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/deviceinsight/eventhub-metrics/internal/concurrency"
-
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/deviceinsight/eventhub-metrics/internal/blobstorage"
 	"github.com/deviceinsight/eventhub-metrics/internal/collector"
 	"github.com/deviceinsight/eventhub-metrics/internal/config"
 	"github.com/deviceinsight/eventhub-metrics/internal/metrics"
 	"github.com/deviceinsight/eventhub-metrics/internal/rest"
+	"golang.org/x/sync/errgroup"
 )
 
 var Version string
@@ -157,11 +156,10 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 			return fmt.Errorf("failed to compile excludedConsumerGroups regex: %w", err)
 		}
 
-		limiter := concurrency.NewLimiter(cfg.Collector.Concurrency)
 		slog.Debug("using concurrency limit", "concurrency", cfg.Collector.Concurrency)
 
-		inProgress := 0
-		resultChan := make(chan error)
+		g, gCtx := errgroup.WithContext(ctx)
+		g.SetLimit(cfg.Collector.Concurrency)
 
 		for _, eventHub := range eventHubs {
 
@@ -179,34 +177,28 @@ func collectMetrics(credential *azidentity.DefaultAzureCredential, cfg *config.C
 
 			blobStores, err := blobstorage.GetBlobStores(credential, storedGroups, namespaceCfg.Endpoint, eventHub.Name)
 			if err != nil {
+				// Wait for any in-flight goroutines to finish before returning,
+				// so no goroutine, AMQP/blob client, or context is leaked.
+				_ = g.Wait()
 				return fmt.Errorf("failed to get blob stores for namespace %s: %w", namespace, err)
 			}
 
-			started := limiter.Go(ctx, func() {
-				err := collectorService.ProcessEventHub(ctx, credential, blobStores, namespace, namespaceCfg.Endpoint,
-					&eventHub, excludeConsumerGroupsRegex)
-				if err != nil {
-					resultChan <- fmt.Errorf("failed to process eventhub %s in namespace %s: %w", eventHub.Name, namespace, err)
-					return
+			g.Go(func() error {
+				if err := collectorService.ProcessEventHub(gCtx, credential, blobStores, namespace,
+					namespaceCfg.Endpoint, &eventHub, excludeConsumerGroupsRegex); err != nil {
+					return fmt.Errorf("failed to process eventhub %s in namespace %s: %w",
+						eventHub.Name, namespace, err)
 				}
-				resultChan <- nil
+				return nil
 			})
-			if !started && ctx.Err() != nil {
-				return fmt.Errorf("failed to start process for eventhub %s in namespace %s: %w",
-					eventHub.Name, namespace, ctx.Err())
-			}
-			inProgress++
 		}
 
-		for i := range inProgress {
-			slog.Debug("awaiting result", "index", i, "count", inProgress)
-			err := <-resultChan
-			if err != nil {
-				return err
-			}
+		// errgroup cancels gCtx on first error (propagated through Azure SDK / blob
+		// calls so in-flight work aborts promptly) and waits for every goroutine to
+		// return — guarantees no goroutine leak even on the error path.
+		if err := g.Wait(); err != nil {
+			return err
 		}
-
-		limiter.Wait()
 	}
 
 	return nil
