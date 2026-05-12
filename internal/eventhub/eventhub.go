@@ -3,6 +3,7 @@ package eventhub
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -94,6 +95,17 @@ func GetSequenceNumbers(ctx context.Context, credential *azidentity.DefaultAzure
 	if err != nil {
 		return nil, fmt.Errorf("failed to create consumer client: %w", err)
 	}
+	defer func() {
+		// use a background context with a short timeout so a canceled ctx
+		// does not prevent the client from releasing its AMQP connection,
+		// links and background goroutines.
+		closeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		if cerr := consumerClient.Close(closeCtx); cerr != nil {
+			slog.Warn("failed to close eventhub consumer client",
+				"eventhub", eventhubDetails.Name, "error", cerr)
+		}
+	}()
 
 	lastEnqueuedSequenceNumbers := make(map[string]SequenceNumbers)
 
