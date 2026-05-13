@@ -2,19 +2,23 @@ package blobstorage
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"net/url"
 	"path"
 	"regexp"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/to"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2/checkpoints"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/deviceinsight/eventhub-metrics/internal/rest"
 )
 
 // MinDirectoryDepth container should have directories namespace/eventHub/consumerGroup.
@@ -127,6 +131,10 @@ func getContainers(ctx context.Context, client *azblob.Client,
 	for pager.More() {
 		resp, err := pager.NextPage(ctx)
 		if err != nil {
+			var respErr *azcore.ResponseError
+			if errors.As(err, &respErr) && respErr.StatusCode == http.StatusForbidden {
+				return nil, fmt.Errorf("%w: %w", rest.ErrAuthentication, err)
+			}
 			return nil, err
 		}
 
