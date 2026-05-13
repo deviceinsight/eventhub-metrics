@@ -1,6 +1,7 @@
 BUILD_TS := $(shell date -Iseconds -u)
 COMMIT_SHA ?= $(shell git rev-parse HEAD)
 VERSION ?= $(shell git diff --quiet && git describe --exact-match --tags $(COMMIT_SHA) 2>/dev/null || echo "latest")
+DOCKER_VERSION := $(patsubst v%,%,$(VERSION))
 DOCKER_REGISTRY ?= docker.io
 DOCKER_GROUP ?= deviceinsight
 
@@ -44,13 +45,13 @@ install: # Installs a release build
 
 .PHONY: docker-build
 docker-build: # Creates a docker image
-	docker build -t eventhub-metrics:$(VERSION) --build-arg COMMIT_SHA=$(COMMIT_SHA) --build-arg VERSION=$(VERSION) --platform linux/amd64 .
+	docker build -t eventhub-metrics:$(DOCKER_VERSION) --build-arg COMMIT_SHA=$(COMMIT_SHA) --build-arg VERSION=$(DOCKER_VERSION) --platform linux/amd64 .
 
 .PHONY: docker-push
 docker-push: # Pushes the docker images to the registry
-	docker tag eventhub-metrics:$(VERSION) $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:$(VERSION)
-	docker tag eventhub-metrics:$(VERSION) $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:latest
-	docker push $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:$(VERSION)
+	docker tag eventhub-metrics:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:$(DOCKER_VERSION)
+	docker tag eventhub-metrics:$(DOCKER_VERSION) $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:latest
+	docker push $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:$(DOCKER_VERSION)
 	docker push $(DOCKER_REGISTRY)/$(DOCKER_GROUP)/eventhub-metrics:latest
 
 .PHONY: docker-publish
