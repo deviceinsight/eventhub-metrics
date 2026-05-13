@@ -17,7 +17,9 @@ jobs:
       - uses: actions/setup-go@v5
         with:
           go-version-file: 'go.mod'
-      - name: run lint
-        run: make lint
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v9
+        with:
+          version: v2.12
       - name: Run build
         run: make build
