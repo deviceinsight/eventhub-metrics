@@ -65,7 +65,7 @@ helm-package: # package helm chart
 # usage make release VERSION=1.1.0
 #
 .PHONY: release
-release: docker-publish helm-package
+release: helm-package
 	git add helm/archives/.
 	git commit -m "releases $(VERSION)"
 	git tag -a v$(VERSION) -m "release v$(VERSION)"
