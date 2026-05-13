@@ -2,7 +2,19 @@ apiVersion: v1
 entries:
   eventhub-metrics:
   - apiVersion: v2
-    created: "2026-05-13T09:31:10.626234813+02:00"
+    created: "2026-05-13T09:53:11.242070003+02:00"
+    description: A Helm chart installing eventhub-metrics
+    digest: 3380a37419dea3608f53f195ff93d59eb4c814e7d2c08aeb37aea07b9bc601ce
+    home: https://gitlab.device-insight.com/dwi/eventhub-metrics
+    maintainers:
+    - name: Device Insight
+      url: https://www.device-insight.com
+    name: eventhub-metrics
+    urls:
+    - eventhub-metrics-1.5.3.tgz
+    version: 1.5.3
+  - apiVersion: v2
+    created: "2026-05-13T09:53:11.241874547+02:00"
     description: A Helm chart installing eventhub-metrics
     digest: 0248944bc0acec3039d95edd51786e27920a0ad9aa09ba25cffde71e2f6e7a00
     home: https://gitlab.device-insight.com/dwi/eventhub-metrics
@@ -14,7 +26,7 @@ entries:
     - eventhub-metrics-1.5.2.tgz
     version: 1.5.2
   - apiVersion: v2
-    created: "2026-05-13T09:31:10.626035921+02:00"
+    created: "2026-05-13T09:53:11.241660166+02:00"
     description: A Helm chart installing eventhub-metrics
     digest: 08cc037ebbf90de9de1facbba9c0b05ec61ffba21d947d53be83c3201ab212bb
     home: https://gitlab.device-insight.com/dwi/eventhub-metrics
@@ -26,7 +38,7 @@ entries:
     - eventhub-metrics-1.5.1.tgz
     version: 1.5.1
   - apiVersion: v2
-    created: "2026-05-13T09:31:10.625794319+02:00"
+    created: "2026-05-13T09:53:11.241480119+02:00"
     description: A Helm chart installing eventhub-metrics
     digest: 5f80efe3b68f0d5ce8d2316a5f5efbaa58db56bc4d0f5044bc4f3cc26c8cca60
     home: https://gitlab.device-insight.com/dwi/eventhub-metrics
@@ -38,7 +50,7 @@ entries:
     - eventhub-metrics-1.5.0.tgz
     version: 1.5.0
   - apiVersion: v2
-    created: "2026-05-13T09:31:10.624836456+02:00"
+    created: "2026-05-13T09:53:11.241297608+02:00"
     description: A Helm chart installing eventhub-metrics
     digest: 760c3cff835e4ee8e73ee269a23267131514b1e15a255a712b4a109649296df1
     home: https://gitlab.device-insight.com/dwi/eventhub-metrics
@@ -50,7 +62,7 @@ entries:
     - eventhub-metrics-1.4.0.tgz
     version: 1.4.0
   - apiVersion: v2
-    created: "2026-05-13T09:31:10.624520535+02:00"
+    created: "2026-05-13T09:53:11.241120126+02:00"
     description: A Helm chart installing eventhub-metrics
     digest: 7a773325dfff1ff7df65d53a7d35789db278147494ede02462bd3d88bb2a548e
     home: https://gitlab.device-insight.com/dwi/eventhub-metrics
@@ -62,7 +74,7 @@ entries:
     - eventhub-metrics-1.3.0.tgz
     version: 1.3.0
   - apiVersion: v2
-    created: "2026-05-13T09:31:10.624315592+02:00"
+    created: "2026-05-13T09:53:11.240936803+02:00"
     description: A Helm chart installing eventhub-metrics
     digest: 6c21dda34634bc06c7f99223cd228cdb22aba541efe0ab41390aea2b161d2617
     home: https://gitlab.device-insight.com/dwi/eventhub-metrics
@@ -74,7 +86,7 @@ entries:
     - eventhub-metrics-1.2.0.tgz
     version: 1.2.0
   - apiVersion: v2
-    created: "2026-05-13T09:31:10.624096001+02:00"
+    created: "2026-05-13T09:53:11.240732611+02:00"
     description: A Helm chart installing eventhub-metrics
     digest: 9002cbf09b24c0e2c3d30c43659abf284a22b849bc196e9c1e1e6ae834201c49
     home: https://gitlab.device-insight.com/dwi/eventhub-metrics
@@ -86,7 +98,7 @@ entries:
     - eventhub-metrics-1.1.0.tgz
     version: 1.1.0
   - apiVersion: v2
-    created: "2026-05-13T09:31:10.623836005+02:00"
+    created: "2026-05-13T09:53:11.240478876+02:00"
     description: A Helm chart installing eventhub-metrics
     digest: 040a2773b45371e9230ca4339b03b5ed45078afed99d953af95d698ddb544bf0
     home: https://gitlab.device-insight.com/dwi/eventhub-metrics
@@ -97,4 +109,4 @@ entries:
     urls:
     - eventhub-metrics-1.0.0.tgz
     version: 1.0.0
-generated: "2026-05-13T09:31:10.623530593+02:00"
+generated: "2026-05-13T09:53:11.240133109+02:00"
