@@ -11,7 +11,7 @@ run:
   timeout: 3m
 
 linters:
-  disable-all: true
+  default: none
   enable:
     ## enabled by default
     - errcheck # checking for unchecked errors, these unchecked errors can be critical bugs in some cases
@@ -189,30 +189,24 @@ linters:
     copyloopvar:
       check-alias: true
 
+  exclusions:
+    paths:
+      - ".*generated.go"
+    rules:
+      - source: "(noinspection|TODO)"
+        linters: [ godot ]
+      - source: "//noinspection"
+        linters: [ gocritic ]
+      - path: "_test\\.go"
+        linters:
+          - bodyclose
+          - dupl
+          - funlen
+          - goconst
+          - gosec
+          - noctx
+          - wrapcheck
+
 formatters:
   enable:
     - goimports # in addition to fixing imports, goimports also formats your code in the same style as gofmt
-
-issues:
-  # Maximum count of issues with the same text.
-  # Set to 0 to disable.
-  # Default: 3
-  max-same-issues: 50
-
-  exclude-files:
-    - ".*generated.go"
-
-  exclude-rules:
-    - source: "(noinspection|TODO)"
-      linters: [ godot ]
-    - source: "//noinspection"
-      linters: [ gocritic ]
-    - path: "_test\\.go"
-      linters:
-        - bodyclose
-        - dupl
-        - funlen
-        - goconst
-        - gosec
-        - noctx
-        - wrapcheck

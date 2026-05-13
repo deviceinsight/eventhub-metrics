@@ -13,6 +13,8 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/messaging/azeventhubs/v2"
 )
 
+const closeTimeout = 10 * time.Second
+
 type Details struct {
 	Name                   string
 	PartitionCount         int
@@ -99,7 +101,7 @@ func GetSequenceNumbers(ctx context.Context, credential *azidentity.DefaultAzure
 		// use a background context with a short timeout so a canceled ctx
 		// does not prevent the client from releasing its AMQP connection,
 		// links and background goroutines.
-		closeCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		closeCtx, cancel := context.WithTimeout(context.Background(), closeTimeout)
 		defer cancel()
 		if cerr := consumerClient.Close(closeCtx); cerr != nil {
 			slog.Warn("failed to close eventhub consumer client",
