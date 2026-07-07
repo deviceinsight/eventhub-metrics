@@ -2,7 +2,9 @@ package metrics
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
+	"sync"
 	"time"
 
 	"go.opentelemetry.io/otel/attribute"
@@ -17,9 +19,10 @@ type OtlpService struct {
 	baseURL  string
 	exporter metric.Exporter
 	metrics  metricdata.ResourceMetrics
+	mu       sync.Mutex
 }
 
-func NewOtlpService(baseURL string, protocol string) RecordService {
+func NewOtlpService(baseURL string, protocol string) (RecordService, error) {
 	slog.Debug("using otlp exporter", "baseURL", baseURL, "protocol", protocol)
 
 	var exporter metric.Exporter
@@ -35,13 +38,11 @@ func NewOtlpService(baseURL string, protocol string) RecordService {
 			otlpmetrichttp.WithEndpointURL(baseURL),
 		)
 	default:
-		slog.Error("unsupported protocol", "protocol", protocol)
-		return nil
+		return nil, fmt.Errorf("unsupported otlp protocol: %q", protocol)
 	}
 
 	if err != nil {
-		slog.Error("failed to create exporter", "error", err)
-		return nil
+		return nil, fmt.Errorf("failed to create otlp exporter: %w", err)
 	}
 
 	metrics := metricdata.ResourceMetrics{}
@@ -52,7 +53,7 @@ func NewOtlpService(baseURL string, protocol string) RecordService {
 			Metrics: make([]metricdata.Metrics, 0),
 		}
 
-	return &OtlpService{baseURL: baseURL, exporter: exporter, metrics: metrics}
+	return &OtlpService{baseURL: baseURL, exporter: exporter, metrics: metrics}, nil
 }
 
 func (s *OtlpService) RecordMetric(metric *Metric, labels map[string]string, value float64) {
@@ -78,13 +79,20 @@ func (s *OtlpService) RecordMetric(metric *Metric, labels map[string]string, val
 		Data:        gauge,
 	}
 
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.metrics.ScopeMetrics[0].Metrics = append(s.metrics.ScopeMetrics[0].Metrics, otelMetric)
 }
 
-func (s *OtlpService) PushMetrics() error {
-	err := s.exporter.Export(context.Background(), &s.metrics)
-	// clear the metrics after exporting
+func (s *OtlpService) StartCycle() {
+	// drop the previous cycle's accumulated metrics before collecting fresh ones
+	s.mu.Lock()
+	defer s.mu.Unlock()
 	s.metrics.ScopeMetrics[0].Metrics = make([]metricdata.Metrics, 0)
+}
 
-	return err
+func (s *OtlpService) PushMetrics() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.exporter.Export(context.Background(), &s.metrics)
 }

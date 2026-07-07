@@ -15,10 +15,12 @@ type Service interface {
 	RecordConsumerGroupPartitionOwner(namespace, eventhub, consumerGroup, partitionID, owner string, expired bool)
 	RecordConsumerGroupPartitionLag(namespace, eventhub, consumerGroup, partitionID string, lag int64)
 	RecordConsumerGroupLag(namespace, eventhub, consumerGroup string, lag int64)
+	StartCollectionCycle()
 	PushMetrics() error
 }
 
 type RecordService interface {
+	StartCycle()
 	RecordMetric(metric *Metric, labels map[string]string, value float64)
 	PushMetrics() error
 }
@@ -113,7 +115,7 @@ func (s *service) RecordConsumerGroupPartitionOwner(namespace, eventhub, consume
 		labelEventhub:      eventhub,
 		labelConsumerGroup: consumerGroup,
 		labelPartitionID:   partitionID,
-		"owner":            owner},
+		labelOwner:         owner},
 		value)
 }
 
@@ -132,6 +134,10 @@ func (s *service) RecordConsumerGroupLag(namespace, eventhub, consumerGroup stri
 		labelEventhub:      eventhub,
 		labelConsumerGroup: consumerGroup},
 		float64(lag))
+}
+
+func (s *service) StartCollectionCycle() {
+	s.recorder.StartCycle()
 }
 
 func (s *service) PushMetrics() error {

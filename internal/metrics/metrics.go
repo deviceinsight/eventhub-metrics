@@ -7,6 +7,7 @@ const (
 	labelEventhub      = "eventhub"
 	labelPartitionID   = "partition_id"
 	labelConsumerGroup = "consumer_group"
+	labelOwner         = "owner"
 )
 
 type Metric struct {
@@ -72,7 +73,7 @@ var ConsumerGroupEventsSum = &Metric{
 var ConsumerGroupPartitionOwner = &Metric{
 	Name:   "consumer_group_partition_owner",
 	Help:   "info about owner of a partition in a consumer group. Value is 0 if owner is expired, otherwise 1.",
-	Labels: []string{labelNamespace, labelEventhub, labelConsumerGroup, labelPartitionID, "owner"},
+	Labels: []string{labelNamespace, labelEventhub, labelConsumerGroup, labelPartitionID, labelOwner},
 }
 
 var ConsumerGroupPartitionLag = &Metric{

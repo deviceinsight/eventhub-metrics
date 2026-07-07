@@ -13,6 +13,9 @@ func (s *logService) RecordMetric(metric *Metric, labels map[string]string, valu
 	slog.Info("recording metric", "metric", metric.Name, "labels", labels, "value", value)
 }
 
+func (s *logService) StartCycle() {
+}
+
 func (s *logService) PushMetrics() error {
 	return nil
 }

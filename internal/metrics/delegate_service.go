@@ -22,6 +22,12 @@ func (s *delegateService) RecordMetric(metric *Metric, labels map[string]string,
 	}
 }
 
+func (s *delegateService) StartCycle() {
+	for _, delegate := range s.delegates {
+		delegate.StartCycle()
+	}
+}
+
 func (s *delegateService) PushMetrics() error {
 	for _, delegate := range s.delegates {
 		if err := delegate.PushMetrics(); err != nil {

@@ -31,6 +31,9 @@ func (s *appInsightsService) RecordMetric(metric *Metric, labels map[string]stri
 	s.client.Track(metricTelemetry)
 }
 
+func (s *appInsightsService) StartCycle() {
+}
+
 func (s *appInsightsService) PushMetrics() error {
 	return nil
 }

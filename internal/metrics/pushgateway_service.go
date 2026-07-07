@@ -41,6 +41,12 @@ func (s *pushGatewayService) RecordMetric(metric *Metric, labels map[string]stri
 	s.gauges[metric].With(labels).Set(value)
 }
 
+func (s *pushGatewayService) StartCycle() {
+	for _, gauge := range s.gauges {
+		gauge.Reset()
+	}
+}
+
 func (s *pushGatewayService) PushMetrics() error {
 	return push.New(s.baseURL, "eventhub-metrics").Gatherer(s.registry).Push()
 }

@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -17,19 +18,16 @@ type RecordServiceWithHTTPServer interface {
 	RecordService
 }
 
-type prometheusService struct {
+// gaugeSet is one complete registry snapshot; double-buffered so scrapers never observe a half-collected cycle.
+type gaugeSet struct {
 	registry *prometheus.Registry
 	gauges   map[*Metric]*prometheus.GaugeVec
 }
 
-func NewPrometheusService() RecordServiceWithHTTPServer {
-
-	slog.Debug("using prometheus exporter")
-
+func newGaugeSet() *gaugeSet {
 	registry := prometheus.NewRegistry()
 
-	var gauges = make(map[*Metric]*prometheus.GaugeVec)
-
+	gauges := make(map[*Metric]*prometheus.GaugeVec)
 	for _, metric := range allMetrics {
 		gauges[metric] = prometheus.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: metricPrefix,
@@ -42,14 +40,33 @@ func NewPrometheusService() RecordServiceWithHTTPServer {
 	// add default metrics
 	registry.MustRegister(collectors.NewGoCollector())
 
-	return &prometheusService{registry: registry, gauges: gauges}
+	return &gaugeSet{registry: registry, gauges: gauges}
+}
+
+type prometheusService struct {
+	mu       sync.RWMutex
+	active   *gaugeSet
+	building *gaugeSet
+}
+
+func NewPrometheusService() RecordServiceWithHTTPServer {
+
+	slog.Debug("using prometheus exporter")
+
+	set := newGaugeSet()
+
+	return &prometheusService{active: set, building: set}
 }
 
 func (s *prometheusService) RunHTTPServer(address string, readTimeout time.Duration) {
 
 	pMux := http.NewServeMux()
-	promHandler := promhttp.HandlerFor(s.registry, promhttp.HandlerOpts{})
-	pMux.Handle("/metrics", promHandler)
+	pMux.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		s.mu.RLock()
+		registry := s.active.registry
+		s.mu.RUnlock()
+		promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
+	}))
 
 	pMux.Handle("/health", http.HandlerFunc(healthHandler))
 
@@ -71,9 +88,24 @@ func healthHandler(w http.ResponseWriter, _ *http.Request) {
 }
 
 func (s *prometheusService) RecordMetric(metric *Metric, labels map[string]string, value float64) {
-	s.gauges[metric].With(labels).Set(value)
+	s.mu.RLock()
+	building := s.building
+	s.mu.RUnlock()
+	building.gauges[metric].With(labels).Set(value)
 }
 
+// StartCycle begins a fresh building set so stale series don't accumulate.
+func (s *prometheusService) StartCycle() {
+	set := newGaugeSet()
+	s.mu.Lock()
+	s.building = set
+	s.mu.Unlock()
+}
+
+// PushMetrics publishes the collected cycle by atomically promoting building to active.
 func (s *prometheusService) PushMetrics() error {
+	s.mu.Lock()
+	s.active = s.building
+	s.mu.Unlock()
 	return nil
 }

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/Azure/azure-sdk-for-go/sdk/azidentity"
+	"github.com/KimMachineGun/automemlimit/memlimit"
 	"github.com/deviceinsight/eventhub-metrics/internal/blobstorage"
 	"github.com/deviceinsight/eventhub-metrics/internal/collector"
 	"github.com/deviceinsight/eventhub-metrics/internal/config"
@@ -37,29 +38,18 @@ func main() {
 	os.Exit(run())
 }
 
-//nolint:gocognit
-func run() int {
-
-	cfg, err := config.Load()
-	if err != nil {
-		slog.Error("failed to load cfg", "error", err)
-		return 1
+// setGoMemLimit sets GOMEMLIMIT to 90% of the cgroup memory limit so the GC runs
+// before the container gets OOMKilled (10% headroom for non-heap memory).
+func setGoMemLimit() {
+	if _, err := memlimit.SetGoMemLimitWithOpts(
+		memlimit.WithProvider(memlimit.FromCgroup),
+		memlimit.WithLogger(slog.Default()),
+	); err != nil && !errors.Is(err, memlimit.ErrNoLimit) {
+		slog.Warn("failed to set GOMEMLIMIT from cgroup", "error", err)
 	}
+}
 
-	config.InitLogger(cfg.Log)
-
-	slog.Info("service starting", "version", Version, "buildTime", BuildTime, "gitCommit", GitCommit)
-
-	defer func() {
-		slog.Debug("service stopping")
-	}()
-
-	credential, err := azidentity.NewDefaultAzureCredential(nil)
-	if err != nil {
-		slog.Error("failed to get default azure credential", "error", err)
-		return 1
-	}
-
+func buildExporters(cfg *config.Config) ([]metrics.RecordService, error) {
 	var metricExporters []metrics.RecordService
 
 	if cfg.Exporter.AppInsights.Enabled {
@@ -81,8 +71,44 @@ func run() int {
 	}
 
 	if cfg.Exporter.Otlp.Enabled {
-		exporter := metrics.NewOtlpService(cfg.Exporter.Otlp.BaseURL, cfg.Exporter.Otlp.Protocol)
+		exporter, err := metrics.NewOtlpService(cfg.Exporter.Otlp.BaseURL, cfg.Exporter.Otlp.Protocol)
+		if err != nil {
+			return nil, err
+		}
 		metricExporters = append(metricExporters, exporter)
+	}
+
+	return metricExporters, nil
+}
+
+func run() int {
+
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("failed to load cfg", "error", err)
+		return 1
+	}
+
+	config.InitLogger(cfg.Log)
+
+	slog.Info("service starting", "version", Version, "buildTime", BuildTime, "gitCommit", GitCommit)
+
+	setGoMemLimit()
+
+	defer func() {
+		slog.Debug("service stopping")
+	}()
+
+	credential, err := azidentity.NewDefaultAzureCredential(nil)
+	if err != nil {
+		slog.Error("failed to get default azure credential", "error", err)
+		return 1
+	}
+
+	metricExporters, err := buildExporters(cfg)
+	if err != nil {
+		slog.Error("failed to create metric exporter", "error", err)
+		return 1
 	}
 
 	metricsService := metrics.NewDelegateService(metricExporters...)
@@ -91,6 +117,7 @@ func run() int {
 	for {
 		start := time.Now()
 		slog.Info("starting metrics collector")
+		metricsService.StartCollectionCycle()
 		err := collectMetrics(credential, cfg, collectorService)
 
 		if err != nil {
