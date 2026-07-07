@@ -16,6 +16,7 @@ import (
 	"github.com/deviceinsight/eventhub-metrics/internal/blobstorage"
 	"github.com/deviceinsight/eventhub-metrics/internal/collector"
 	"github.com/deviceinsight/eventhub-metrics/internal/config"
+	"github.com/deviceinsight/eventhub-metrics/internal/httpserver"
 	"github.com/deviceinsight/eventhub-metrics/internal/metrics"
 	"github.com/deviceinsight/eventhub-metrics/internal/rest"
 	"golang.org/x/sync/errgroup"
@@ -49,7 +50,7 @@ func setGoMemLimit() {
 	}
 }
 
-func buildExporters(cfg *config.Config) ([]metrics.RecordService, error) {
+func buildExporters(cfg *config.Config, httpServer *httpserver.Server) ([]metrics.RecordService, error) {
 	var metricExporters []metrics.RecordService
 
 	if cfg.Exporter.AppInsights.Enabled {
@@ -60,7 +61,7 @@ func buildExporters(cfg *config.Config) ([]metrics.RecordService, error) {
 	if cfg.Exporter.Prometheus.Enabled {
 		exporter := metrics.NewPrometheusService()
 
-		go exporter.RunHTTPServer(cfg.Exporter.Prometheus.Address, cfg.Exporter.Prometheus.ReadTimeout)
+		httpServer.Handle("/metrics", exporter.MetricsHandler())
 
 		metricExporters = append(metricExporters, exporter)
 	}
@@ -105,7 +106,10 @@ func run() int {
 		return 1
 	}
 
-	metricExporters, err := buildExporters(cfg)
+	httpServer := httpserver.NewServer(cfg.Server.Address, cfg.Server.ReadTimeout)
+	go httpServer.Run()
+
+	metricExporters, err := buildExporters(cfg, httpServer)
 	if err != nil {
 		slog.Error("failed to create metric exporter", "error", err)
 		return 1

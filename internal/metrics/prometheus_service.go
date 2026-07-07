@@ -1,21 +1,20 @@
 package metrics
 
 import (
-	"fmt"
 	"log/slog"
 	"net/http"
-	"os"
 	"sync"
-	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-type RecordServiceWithHTTPServer interface {
-	RunHTTPServer(address string, readTimeout time.Duration)
+// PrometheusService exposes recorded metrics via an HTTP handler that is
+// mounted onto the shared HTTP server.
+type PrometheusService interface {
 	RecordService
+	MetricsHandler() http.Handler
 }
 
 // gaugeSet is one complete registry snapshot; double-buffered so scrapers never observe a half-collected cycle.
@@ -49,7 +48,7 @@ type prometheusService struct {
 	building *gaugeSet
 }
 
-func NewPrometheusService() RecordServiceWithHTTPServer {
+func NewPrometheusService() PrometheusService {
 
 	slog.Debug("using prometheus exporter")
 
@@ -58,33 +57,13 @@ func NewPrometheusService() RecordServiceWithHTTPServer {
 	return &prometheusService{active: set, building: set}
 }
 
-func (s *prometheusService) RunHTTPServer(address string, readTimeout time.Duration) {
-
-	pMux := http.NewServeMux()
-	pMux.Handle("/metrics", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func (s *prometheusService) MetricsHandler() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		s.mu.RLock()
 		registry := s.active.registry
 		s.mu.RUnlock()
 		promhttp.HandlerFor(registry, promhttp.HandlerOpts{}).ServeHTTP(w, r)
-	}))
-
-	pMux.Handle("/health", http.HandlerFunc(healthHandler))
-
-	server := &http.Server{
-		Addr:        address,
-		ReadTimeout: readTimeout,
-		Handler:     pMux,
-	}
-
-	slog.Info("http server started", "address", server.Addr)
-	if err := server.ListenAndServe(); err != nil {
-		slog.Error("http server stopped", "error", err)
-		os.Exit(1)
-	}
-}
-
-func healthHandler(w http.ResponseWriter, _ *http.Request) {
-	_, _ = fmt.Fprintf(w, "OK\n")
+	})
 }
 
 func (s *prometheusService) RecordMetric(metric *Metric, labels map[string]string, value float64) {

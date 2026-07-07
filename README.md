@@ -142,6 +142,15 @@ storageAccounts:
     # regex pattern to exclude containers which store checkpoints (optional)
     excludedContainers: .+test.+
 
+# http server which always exposes the /health endpoint (used by k8s probes).
+# it is available regardless of which metrics exporter is enabled.
+# the prometheus exporter mounts its /metrics endpoint onto this server.
+server:
+  # address for the http server (default: :8080)
+  address: :8080
+  # read timeout for http requests (default: 1s)
+  readTimeout: 1s
+
 exporter:
   # export metrics to AppInsights
   appInsights:
@@ -150,13 +159,13 @@ exporter:
     # instrumentation key to use
     instrumentationKey: xxx
 
-  # run a http server which exposes /metrics
+  # exposes /metrics on the http server (see `server` above)
   prometheus:
     # enable prometheus exporter (default: false)
     enabled: true
-    # read timeout for http request (default: 1s)
+    # DEPRECATED: use server.readTimeout instead
     readTimeout: 15s
-    # address for the http server (default: :8080)
+    # DEPRECATED: use server.address instead
     address: localhost:9090
   
   # export metrics by sending them to a pushGateway

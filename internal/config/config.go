@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 	"time"
@@ -55,6 +56,11 @@ type ExporterConfig struct {
 	Otlp        OtlpConfig
 }
 
+type ServerConfig struct {
+	Address     string
+	ReadTimeout time.Duration
+}
+
 type CollectorConfig struct {
 	OwnershipExpirationDuration time.Duration
 	Concurrency                 int
@@ -70,6 +76,7 @@ type LogConfig struct {
 type Config struct {
 	Namespaces      []NamespaceConfig
 	StorageAccounts []BlobStorageConfig
+	Server          ServerConfig
 	Exporter        ExporterConfig
 	Collector       CollectorConfig
 	Log             LogConfig
@@ -94,8 +101,8 @@ func Load() (*Config, error) {
 		"collector.ownershipExpirationDuration": time.Minute,
 		"collector.concurrency":                 8, //nolint:mnd // just a default
 		"collector.exitOnAuthenticationError":   true,
-		"exporter.prometheus.address":           ":8080",
-		"exporter.prometheus.readTimeout":       "1s",
+		"server.address":                        ":8080",
+		"server.readTimeout":                    "1s",
 		"exporter.otlp.protocol":                "grpc",
 	}, "."), nil); err != nil {
 		return nil, fmt.Errorf("failed to load config defaults: %w", err)
@@ -116,6 +123,15 @@ func Load() (*Config, error) {
 	var cfg Config
 	if err := k.Unmarshal("", &cfg); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal config: %w", err)
+	}
+
+	if k.Exists("exporter.prometheus.address") {
+		slog.Warn("exporter.prometheus.address is deprecated, use server.address instead")
+		cfg.Server.Address = cfg.Exporter.Prometheus.Address
+	}
+	if k.Exists("exporter.prometheus.readTimeout") {
+		slog.Warn("exporter.prometheus.readTimeout is deprecated, use server.readTimeout instead")
+		cfg.Server.ReadTimeout = cfg.Exporter.Prometheus.ReadTimeout
 	}
 
 	return &cfg, nil
